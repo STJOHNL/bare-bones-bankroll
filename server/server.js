@@ -19,6 +19,8 @@ import mainRoutes from './routes/main.js'
 import authRoutes from './routes/auth.js'
 import userRoutes from './routes/user.js'
 import supportRoutes from './routes/support.js'
+import sessionRoutes from './routes/session.js'
+import transactionRoutes from './routes/transaction.js'
 
 // Connect to MongoDB
 connectDB()
@@ -26,8 +28,8 @@ connectDB()
 const app = express()
 
 // Middleware
-app.use(express.json({ extended: true }))
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json({ limit: '5mb' }))
+app.use(express.urlencoded({ extended: true, limit: '5mb' }))
 
 // Log
 app.use(logger('dev'))
@@ -57,6 +59,8 @@ app.use('/api', mainRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
 app.use('/api/support', supportRoutes)
+app.use('/api/session', sessionRoutes)
+app.use('/api/transaction', transactionRoutes)
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../client/dist')))

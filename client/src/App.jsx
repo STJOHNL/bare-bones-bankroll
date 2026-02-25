@@ -20,6 +20,11 @@ import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
 import Admin from './pages/Admin'
 import Support from './pages/Support'
+import NewSession from './pages/NewSession'
+import EditSession from './pages/EditSession'
+import Bankroll from './pages/Bankroll'
+import SupportTickets from './pages/SupportTickets'
+import EditSupportTicket from './pages/EditSupportTicket'
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -85,6 +90,46 @@ const router = createBrowserRouter(
             <PrivateRoute>
               <Support />
             </PrivateRoute>
+          }
+        />
+        <Route
+          path='sessions/new'
+          element={
+            <PrivateRoute>
+              <NewSession />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='sessions/:id/edit'
+          element={
+            <PrivateRoute>
+              <EditSession />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='bankroll'
+          element={
+            <PrivateRoute>
+              <Bankroll />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='support-tickets'
+          element={
+            <AdminRoute>
+              <SupportTickets />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='support-tickets/:id'
+          element={
+            <AdminRoute>
+              <EditSupportTicket />
+            </AdminRoute>
           }
         />
         <Route

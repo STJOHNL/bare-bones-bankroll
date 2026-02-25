@@ -2,33 +2,27 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { FaPencilAlt, FaTrashAlt } from 'react-icons/fa'
 // Custom Hooks
-import { useSupportTicket } from '../hooks/useSupportTicket'
-// Helpers
-import { handleChange } from '../utils/formHelpers'
+import { useSupport } from '../hooks/useSupport'
 // Components
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
-import SupportTicketRow from '../components/SupportTicketRow'
-// import SupportTicketCard from '../components/SupportTicketCard'
 
 const SupportTickets = () => {
-  const { getSupportTickets } = useSupportTicket()
+  const { getSupportTickets, deleteSupportTicket } = useSupport()
 
   const [isLoading, setIsLoading] = useState(false)
-  const [supportTickets, setSupportTickets] = useState()
+  const [supportTickets, setSupportTickets] = useState([])
   const [filteredSupportTickets, setFilteredSupportTickets] = useState([])
   const [filters, setFilters] = useState({
-    type: '',
+    category: '',
     status: ''
   })
 
   useEffect(() => {
     const fetchSupportTickets = async () => {
       setIsLoading(true)
-
-      let res = await getSupportTickets()
-      setSupportTickets(res)
-
+      const res = await getSupportTickets()
+      setSupportTickets(res || [])
       setIsLoading(false)
     }
 
@@ -36,44 +30,40 @@ const SupportTickets = () => {
   }, [])
 
   useEffect(() => {
-    // Filter time off requests on change
-    const filteredSupportTickets = () => {
-      let filtered = supportTickets
-      // Type filter
-      if (filters.type) {
-        filtered = filtered.filter(supportTicket => supportTicket.type == filters.type)
-      }
-
-      // Type filter
-      if (filters.status) {
-        filtered = filtered.filter(supportTicket => supportTicket.status == filters.status)
-      }
-
-      return filtered
+    let filtered = supportTickets
+    if (filters.category) {
+      filtered = filtered.filter(t => t.category === filters.category)
     }
-    if (supportTickets) {
-      setFilteredSupportTickets(filteredSupportTickets())
+    if (filters.status) {
+      filtered = filtered.filter(t => t.status === filters.status)
     }
+    setFilteredSupportTickets(filtered)
   }, [filters, supportTickets])
 
-  // Handle delete return
-  const handleDelete = deletedSupportTicket => {
-    setSupportTickets(prev => prev.filter(supportTicket => supportTicket._id !== deletedSupportTicket._id))
+  const handleDelete = async id => {
+    if (!window.confirm('Delete this support ticket?')) return
+    const res = await deleteSupportTicket(id)
+    if (res) {
+      setSupportTickets(prev => prev.filter(t => t._id !== id))
+    }
   }
 
-  // Conditional loader
+  const handleFilterChange = e => {
+    setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  }
+
   if (isLoading) return <Loader />
 
   return (
     <>
       <PageTitle title={'Support Tickets'} />
-      <form>
-        <label htmlFor='type'>Type</label>
+      <form className='filter-form'>
+        <label htmlFor='category'>Type</label>
         <select
-          name='type'
-          id='type'
-          value={filters.type}
-          onChange={e => handleChange(e, setFilters, filters)}>
+          name='category'
+          id='category'
+          value={filters.category}
+          onChange={handleFilterChange}>
           <option value=''>All Types</option>
           <option value='Bug'>Bug/Error</option>
           <option value='Feedback'>Feedback</option>
@@ -85,7 +75,7 @@ const SupportTickets = () => {
           name='status'
           id='status'
           value={filters.status}
-          onChange={e => handleChange(e, setFilters, filters)}>
+          onChange={handleFilterChange}>
           <option value=''>All Statuses</option>
           <option value='Completed'>Completed</option>
           <option value='In Progress'>In Progress</option>
@@ -105,40 +95,31 @@ const SupportTickets = () => {
           </tr>
         </thead>
         <tbody>
-          {filteredSupportTickets?.length ? (
-            filteredSupportTickets.map(supportTicket => {
-              return (
-                <SupportTicketRow
-                  key={supportTicket._id}
-                  supportTicket={supportTicket}
-                  onDeleteCallback={handleDelete}
-                />
-                // <tr key={supportTicket?._id}>
-                //   <td data-label='Type'>{supportTicket.type}</td>
-                //   <td data-label='Message' className='support-table__message'>
-                //     {supportTicket.message}
-                //   </td>
-                //   <td data-label='Status'>{supportTicket.status}</td>
-                //   <td data-label='User'>{supportTicket.user}</td>
-                //   <td data-label='Manage'>
-                //     <Link
-                //       to={`/support-tickets/${supportTicket._id}`}
-                //       className='btn btn--subtle'
-                //     >
-                //       <FaPencilAlt className='btn--icon' />
-                //     </Link>
-                //     <button
-                //       onClick={() => handleDelete(supportTicket._id)}
-                //       className='btn btn--subtle'
-                //     >
-                //       <FaTrashAlt className='btn--icon--danger' />
-                //     </button>
-                //   </td>
-                // </tr>
-              )
-            })
+          {filteredSupportTickets.length ? (
+            filteredSupportTickets.map(ticket => (
+              <tr key={ticket._id}>
+                <td data-label='Type'>{ticket.category}</td>
+                <td data-label='Message'>{ticket.message}</td>
+                <td data-label='Status'>{ticket.status}</td>
+                <td data-label='User'>{ticket.userName}</td>
+                <td data-label='Manage'>
+                  <Link
+                    to={`/support-tickets/${ticket._id}`}
+                    className='btn btn--subtle'>
+                    <FaPencilAlt className='btn--icon' />
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(ticket._id)}
+                    className='btn btn--subtle'>
+                    <FaTrashAlt className='btn--icon--danger' />
+                  </button>
+                </td>
+              </tr>
+            ))
           ) : (
-            <></>
+            <tr>
+              <td colSpan={5}>No support tickets found.</td>
+            </tr>
           )}
         </tbody>
       </table>

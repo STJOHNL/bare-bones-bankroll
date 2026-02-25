@@ -1,4 +1,4 @@
-# Edgeucated Bet
+# Bare Bones Bankroll
 
 ## Server setup
 

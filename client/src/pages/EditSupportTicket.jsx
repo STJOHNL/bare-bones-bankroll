@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 // Custom Hooks
-import { useSupportTicket } from '../hooks/useSupportTicket'
+import { useSupport } from '../hooks/useSupport'
 
 // Components
 import Loader from '../components/Loader'
@@ -11,7 +11,7 @@ import SupportForm from '../components/forms/SupportForm'
 const EditSupportTicket = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getSupportTicket } = useSupportTicket()
+  const { getSupportTicket } = useSupport()
 
   const [isLoading, setIsLoading] = useState(false)
   const [supportTicket, setSupportTicket] = useState()
