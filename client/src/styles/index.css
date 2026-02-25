@@ -1,0 +1,221 @@
+/* Font Imports */
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+/* ============================================= */
+/* ============================================= */
+/* General */
+/* ============================================= */
+/* ============================================= */
+
+:root {
+  font-optical-sizing: auto;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+
+  /* Color Variables */
+  --primary: #4169e1;
+  --secondary: #222222;
+  --accent: #ffffff;
+  --light: #ecf0f1;
+  --dark: #222222;
+  --green: #25a85a;
+  --red: #e74c3c;
+
+  /* Background and Card Background */
+  --background: #1a1a1a;
+  --alt-background: #222222;
+
+  /* Box Shadows */
+  --shadow: 0px 2px 8px rgba(0, 0, 0, 0.15);
+  --inset-shadow: inset 0px 2px 8px rgba(0, 0, 0, 0.15);
+
+  /* Border Radius */
+  --radius: 4px;
+}
+
+* {
+  margin: 0;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background);
+  background: linear-gradient(var(--background), var(--alt-background));
+  color: var(--light);
+}
+
+main {
+  max-width: 1100px;
+  margin: 2rem auto;
+  width: -webkit-fill-available;
+  padding: 1rem 1rem 2rem;
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Typography */
+/* ============================================= */
+/* ============================================= */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+th {
+  font-family: 'Permanent Marker', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--light);
+}
+
+p,
+ul,
+li,
+ol,
+span {
+  font-size: 1rem;
+  color: var(--light);
+  letter-spacing: .5px;
+  line-height: normal;
+}
+
+ul li,
+td {
+  font-size: .9rem;
+  color: var(--light);
+  letter-spacing: .5px;
+  line-height: normal;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--alt-background);
+}
+
+.heading-xs,
+.heading-sm,
+.heading-md,
+.heading-lg,
+.heading-xl {
+  font-family: 'Permanent Marker', sans-serif;
+  color: var(--light);
+}
+
+.heading-xs {
+  font-size: .7rem;
+}
+
+.heading-sm {
+  font-size: 1rem;
+}
+
+.heading-md {
+  font-size: 1.125rem;
+}
+
+.heading-lg {
+  font-size: 1.25rem;
+}
+
+.heading-xl {
+  font-size: 1.8rem;
+}
+
+.success {
+  color: var(--green);
+}
+
+.error {
+  color: var(--red);
+}
+
+.icon {
+  vertical-align: middle;
+  color: var(--light);
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Loader */
+/* ============================================= */
+/* ============================================= */
+
+.loader__image {
+  max-width: 30rem;
+  margin: 5rem auto;
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Images */
+/* ============================================= */
+/* ============================================= */
+img {
+  display: block;
+  width: 100%;
+}
+
+.img--error {
+  margin: auto;
+  max-width: 30rem;
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Links */
+/* ============================================= */
+/* ============================================= */
+
+a {
+  display: block;
+  font-family: 'Poppins', sans-serif;
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+a:hover {
+  color: var(--primary);
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Error */
+/* ============================================= */
+/* ============================================= */
+
+.error--wrapper {
+  display: grid;
+  gap: 1rem;
+  text-align: center;
+}
+
+.error--wrapper .btn {
+  margin: 2rem auto;
+  width: fit-content;
+}
+
+.error--details {
+  display: grid;
+  gap: 1rem;
+  margin: 5rem auto 2rem;
+  padding: 1rem 2rem;
+  text-align: left;
+  font-family: monospace;
+  font-size: .8rem;
+  background-color: var(--alt-background);
+  box-shadow: var(--box-shadow);
+  border-radius: var(--radius);
+}
