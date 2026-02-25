@@ -559,9 +559,27 @@ tbody tr:hover {
   margin-top: 0;
 }
 
-.filter-form select {
+.filter-form select,
+.filter-form input[type='date'] {
   width: auto;
   min-width: 10rem;
+}
+
+.table-scroll {
+  max-height: 28rem;
+  overflow-y: auto;
+  margin-top: 1.25rem;
+}
+
+.table-scroll table {
+  margin-top: 0;
+}
+
+.table-scroll thead {
+  position: sticky;
+  top: 0;
+  background-color: var(--background);
+  z-index: 1;
 }
 
 /* ============================================= */

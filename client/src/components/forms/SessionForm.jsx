@@ -65,12 +65,25 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
     } else {
       res = await createSession(formData)
       if (res) {
-        const txn = await createTransaction({
+        const buyinTxn = await createTransaction({
           type: 'Buy-in',
           amount: parseFloat(buyin) || 0,
-          note: name
+          note: name,
+          ...(end && { date: new Date(end).toISOString() })
         })
-        if (txn) setTransactions(prev => [txn, ...prev])
+        if (buyinTxn) setTransactions(prev => [buyinTxn, ...prev])
+
+        const cashoutAmount = parseFloat(cashout) || 0
+        if (cashoutAmount > 0) {
+          const cashoutTxn = await createTransaction({
+            type: 'Cash-out',
+            amount: cashoutAmount,
+            note: name,
+            ...(end && { date: new Date(end).toISOString() })
+          })
+          if (cashoutTxn) setTransactions(prev => [cashoutTxn, ...prev])
+        }
+
         toast.success('Go get some stacks!')
         navigate('/dashboard')
       }

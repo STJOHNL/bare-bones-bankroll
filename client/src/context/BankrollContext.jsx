@@ -25,14 +25,26 @@ export const BankrollProvider = ({ children }) => {
   }, [user])
 
   const deposits = transactions
-    .filter(t => t.type === 'Deposit' || t.type === 'Cash-out')
+    .filter(t => t.type === 'Deposit')
     .reduce((sum, t) => sum + t.amount, 0)
 
   const withdrawals = transactions
-    .filter(t => t.type === 'Withdrawal' || t.type === 'Buy-in')
+    .filter(t => t.type === 'Withdrawal')
     .reduce((sum, t) => sum + t.amount, 0)
 
-  const balance = deposits - withdrawals
+  const cashouts = transactions
+    .filter(t => t.type === 'Cash-out')
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  const buyins = transactions
+    .filter(t => t.type === 'Buy-in')
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  const promos = transactions
+    .filter(t => t.type === 'Promo')
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  const balance = deposits + cashouts + promos - withdrawals - buyins
 
   return (
     <BankrollContext.Provider value={{ transactions, setTransactions, balance, isLoading }}>
