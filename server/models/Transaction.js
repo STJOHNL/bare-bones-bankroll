@@ -5,7 +5,8 @@ const transactionSchema = new mongoose.Schema(
     type: { type: String, enum: ['Deposit', 'Withdrawal', 'Buy-in', 'Cash-out', 'Promo'], required: true },
     amount: { type: Number, required: true },
     note: String,
-    date: { type: Date, default: Date.now }
+    date: { type: Date, default: Date.now },
+    sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session' }
   },
   { timestamps: true }
 )

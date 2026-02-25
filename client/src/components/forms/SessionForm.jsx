@@ -10,7 +10,7 @@ import { useBankrollContext } from '../../context/BankrollContext'
 const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showStatus }) => {
   const { createSession, updateSession } = useSession()
   const { createTransaction } = useBankroll()
-  const { setTransactions } = useBankrollContext()
+  const { setTransactions, refetchTransactions } = useBankrollContext()
   const navigate = useNavigate()
 
   // Convert ISO date string or Date object to datetime-local format
@@ -60,6 +60,7 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
     if (parentData) {
       res = await updateSession(formData)
       if (res) {
+        await refetchTransactions()
         toast.success('Changes saved')
       }
     } else {
@@ -69,6 +70,7 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
           type: 'Buy-in',
           amount: parseFloat(buyin) || 0,
           note: name,
+          sessionId: res._id,
           ...(end && { date: new Date(end).toISOString() })
         })
         if (buyinTxn) setTransactions(prev => [buyinTxn, ...prev])
@@ -79,6 +81,7 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
             type: 'Cash-out',
             amount: cashoutAmount,
             note: name,
+            sessionId: res._id,
             ...(end && { date: new Date(end).toISOString() })
           })
           if (cashoutTxn) setTransactions(prev => [cashoutTxn, ...prev])

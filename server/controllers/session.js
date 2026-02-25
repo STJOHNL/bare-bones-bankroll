@@ -64,20 +64,18 @@ export default {
       // Update session document
       const updatedSession = await Session.findByIdAndUpdate(
         id,
-        {
-          venue,
-          type,
-          game,
-          name,
-          buyin,
-          cashout,
-          start,
-          end,
-          notes
-        },
-        {
-          new: true
-        }
+        { venue, type, game, name, buyin, cashout, start, end, notes },
+        { new: true }
+      )
+
+      // Update linked transactions by sessionId
+      await Transaction.findOneAndUpdate(
+        { sessionId: id, type: 'Buy-in' },
+        { amount: buyin, note: name, date: start || end }
+      )
+      await Transaction.findOneAndUpdate(
+        { sessionId: id, type: 'Cash-out' },
+        { amount: cashout, note: name, date: end }
       )
 
       res.status(200).json(updatedSession)

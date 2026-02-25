@@ -10,16 +10,17 @@ export const BankrollProvider = ({ children }) => {
   const [transactions, setTransactions] = useState([])
   const [isLoading, setIsLoading] = useState(false)
 
+  const fetchTransactions = async () => {
+    setIsLoading(true)
+    const data = await get('/transaction')
+    setTransactions(data || [])
+    setIsLoading(false)
+  }
+
   useEffect(() => {
     if (!user) {
       setTransactions([])
       return
-    }
-    const fetchTransactions = async () => {
-      setIsLoading(true)
-      const data = await get('/transaction')
-      setTransactions(data || [])
-      setIsLoading(false)
     }
     fetchTransactions()
   }, [user])
@@ -47,7 +48,7 @@ export const BankrollProvider = ({ children }) => {
   const balance = deposits + cashouts + promos - withdrawals - buyins
 
   return (
-    <BankrollContext.Provider value={{ transactions, setTransactions, balance, isLoading }}>
+    <BankrollContext.Provider value={{ transactions, setTransactions, balance, isLoading, refetchTransactions: fetchTransactions }}>
       {children}
     </BankrollContext.Provider>
   )

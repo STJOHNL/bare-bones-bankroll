@@ -18,9 +18,9 @@ export default {
   // @access PRIVATE
   createTransaction: async (req, res, next) => {
     try {
-      const { type, amount, note, date } = req.body
+      const { type, amount, note, date, sessionId } = req.body
 
-      const transaction = await Transaction.create({ type, amount, note, date })
+      const transaction = await Transaction.create({ type, amount, note, date, sessionId })
       res.status(201).json(transaction)
     } catch (error) {
       console.log(error)
