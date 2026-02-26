@@ -82,7 +82,7 @@ const UserForm = ({ onSubmitCallback, parentData, buttonText }) => {
         required
       />
 
-      <button>{buttonText}</button>
+      <button type='submit'>{buttonText}</button>
     </form>
   )
 }

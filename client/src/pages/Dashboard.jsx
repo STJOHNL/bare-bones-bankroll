@@ -29,7 +29,7 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [sessions, setSessions] = useState([])
   const [cashoutValues, setCashoutValues] = useState({})
-  const [dateFilter, setDateFilter] = useState('alltime')
+  const [dateFilter, setDateFilter] = useState('week')
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -223,6 +223,10 @@ const Dashboard = () => {
       ) : (
         <p className='no-active'>No active sessions.</p>
       )}
+
+      <div className='active-sessions-header' style={{ marginTop: '2rem' }}>
+        <h2>History</h2>
+      </div>
 
       <table>
         <thead>

@@ -89,7 +89,7 @@ const SupportForm = ({ onSubmitCallback, parentData, buttonText, showStatus }) =
         </>
       )}
 
-      <button>{buttonText}</button>
+      <button type='submit'>{buttonText}</button>
     </form>
   )
 }

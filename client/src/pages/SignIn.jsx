@@ -94,7 +94,7 @@ const SignIn = () => {
         </button>
       </form>
 
-      <div>
+      <div className='auth-links'>
         <Link to='/sign-up'>Need an account?</Link>
         <Link to='/forgot-password'>Forgot password?</Link>
       </div>

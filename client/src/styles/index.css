@@ -33,7 +33,7 @@
   --inset-shadow: inset 0px 2px 8px rgba(0, 0, 0, 0.15);
 
   /* Border Radius */
-  --radius: 4px;
+  --radius: 8px;
 }
 
 * {
@@ -288,9 +288,10 @@ nav a.active {
 .nav__brand {
   font-family: 'Rajdhani', sans-serif;
   font-size: 1.2rem;
-  color: var(--primary);
+  color: var(--primary) !important;
   letter-spacing: 1px;
   user-select: none;
+  opacity: 1 !important;
 }
 
 .nav__balance {
@@ -375,11 +376,13 @@ nav a.active {
 }
 
 button[type='submit'] {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
-  margin-top: 1rem;
-  padding: 0.6rem 1.75rem;
+  width: 100%;
+  margin-top: 1.25rem;
+  padding: 0.65rem 1.75rem;
   background-color: var(--primary);
   color: #fff;
   border: none;
@@ -521,6 +524,7 @@ tbody tr:hover {
 .stat {
   background-color: var(--alt-background);
   border: 1px solid #2e2e2e;
+  border-top: 2px solid var(--primary);
   border-radius: var(--radius);
   padding: 1rem 1.5rem;
   min-width: 9rem;
@@ -860,6 +864,225 @@ h1.heading-xl {
   opacity: 0.35;
   font-family: monospace;
   letter-spacing: 0.3px;
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Card */
+/* ============================================= */
+/* ============================================= */
+
+.card {
+  background-color: var(--alt-background);
+  border: 1px solid #2e2e2e;
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.card form {
+  margin-top: 0;
+  max-width: 100%;
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Form Sections */
+/* ============================================= */
+/* ============================================= */
+
+.form-section {
+  border-bottom: 1px solid #2a2a2a;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Amount Colors */
+/* ============================================= */
+/* ============================================= */
+
+.amount--pos {
+  color: var(--green);
+}
+
+.amount--neg {
+  color: var(--red);
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Badges */
+/* ============================================= */
+/* ============================================= */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge--completed {
+  background-color: rgba(37, 168, 90, 0.15);
+  color: var(--green);
+}
+
+.badge--in-progress {
+  background-color: rgba(65, 105, 225, 0.15);
+  color: var(--primary);
+}
+
+.badge--pending {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.badge--planned {
+  background-color: rgba(255, 255, 255, 0.07);
+  color: var(--light);
+  opacity: 0.7;
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Outline Button */
+/* ============================================= */
+/* ============================================= */
+
+.btn--outline {
+  background: transparent;
+  color: var(--light);
+  border: 1px solid #444;
+  padding: 0.5rem 1.25rem;
+}
+
+.btn--outline:hover {
+  border-color: var(--light);
+  opacity: 0.85;
+  color: var(--light);
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Home / Landing */
+/* ============================================= */
+/* ============================================= */
+
+.hero {
+  text-align: center;
+  padding: 5rem 1rem 3rem;
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.hero__title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 1rem;
+}
+
+.hero__subtitle {
+  font-size: 1rem;
+  opacity: 0.6;
+  margin-bottom: 2rem;
+  line-height: 1.75;
+}
+
+.hero__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.feature {
+  background-color: var(--alt-background);
+  border: 1px solid #2e2e2e;
+  border-top: 2px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  flex: 1;
+  min-width: 14rem;
+}
+
+.feature__icon {
+  font-size: 1.4rem;
+  color: var(--primary);
+  margin-bottom: 0.75rem;
+}
+
+.feature__title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.4rem;
+  color: var(--light);
+}
+
+.feature__desc {
+  font-size: 0.875rem;
+  opacity: 0.55;
+  line-height: 1.65;
+}
+
+/* ============================================= */
+/* ============================================= */
+/* Prose (Terms, Privacy Policy) */
+/* ============================================= */
+/* ============================================= */
+
+.prose {
+  max-width: 48rem;
+  margin-top: 0.5rem;
+}
+
+.prose h2 {
+  margin-top: 2rem;
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+}
+
+.prose p,
+.prose li {
+  opacity: 0.7;
+  line-height: 1.8;
+  margin-bottom: 0.6rem;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.prose a {
+  display: inline;
+  font-size: inherit;
 }
 
 /* ============================================= */

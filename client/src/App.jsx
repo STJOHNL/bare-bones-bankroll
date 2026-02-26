@@ -5,6 +5,7 @@ import AdminRoute from './routes/AdminRoute'
 // Layouts
 import PublicLayout from './layouts/PublicLayout'
 import PrivateLayout from './layouts/PrivateLayout'
+import AdminLayout from './layouts/AdminLayout'
 
 // Pages
 import Error from './pages/errors/Error'
@@ -116,6 +117,11 @@ const router = createBrowserRouter(
             </PrivateRoute>
           }
         />
+      </Route>
+      <Route
+        path='/'
+        element={<AdminLayout />}
+        errorElement={<Error />}>
         <Route
           path='support-tickets'
           element={

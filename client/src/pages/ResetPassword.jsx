@@ -61,9 +61,9 @@ const ResetPassword = () => {
           value={confirmPassword}
           required
         />
-        <button>Update Password</button>
+        <button type='submit'>Update Password</button>
       </form>
-      <div>
+      <div className='auth-links'>
         <Link to='/sign-in'>Return to sign in</Link>
       </div>
     </>

@@ -103,7 +103,7 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
       <h2>{type} Session</h2>
 
       {/* Game Details Section */}
-      <div>
+      <div className='form-section'>
         <h3>Game Details</h3>
         <div>
           <label htmlFor='venue'>Venue</label>
@@ -156,7 +156,7 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
       </div>
 
       {/* Buy-in & Expenses Section */}
-      <div>
+      <div className='form-section'>
         <h3>Financial Details</h3>
         <div>
           <label htmlFor='buyin'>Buy-in ($)</label>
@@ -188,7 +188,7 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
       </div>
 
       {/* Time Section */}
-      <div>
+      <div className='form-section'>
         <h3>Session Time</h3>
         <div>
           <label htmlFor='start'>Start Time</label>
@@ -214,7 +214,7 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
       </div>
 
       {/* Notes Section */}
-      <div>
+      <div className='form-section'>
         <label htmlFor='notes'>Notes</label>
         <textarea
           name='notes'

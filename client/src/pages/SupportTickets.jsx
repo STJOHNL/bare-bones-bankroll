@@ -57,32 +57,36 @@ const SupportTickets = () => {
   return (
     <>
       <PageTitle title={'Support Tickets'} />
-      <form className='filter-form'>
-        <label htmlFor='category'>Type</label>
-        <select
-          name='category'
-          id='category'
-          value={filters.category}
-          onChange={handleFilterChange}>
-          <option value=''>All Types</option>
-          <option value='Bug'>Bug/Error</option>
-          <option value='Feedback'>Feedback</option>
-          <option value='Feature Request'>Feature Request</option>
-          <option value='Other'>Other</option>
-        </select>
-        <label htmlFor='status'>Status</label>
-        <select
-          name='status'
-          id='status'
-          value={filters.status}
-          onChange={handleFilterChange}>
-          <option value=''>All Statuses</option>
-          <option value='Completed'>Completed</option>
-          <option value='In Progress'>In Progress</option>
-          <option value='Pending'>Pending</option>
-          <option value='Planned'>Planned</option>
-        </select>
-      </form>
+      <div className='filter-form'>
+        <div>
+          <label htmlFor='category'>Type</label>
+          <select
+            name='category'
+            id='category'
+            value={filters.category}
+            onChange={handleFilterChange}>
+            <option value=''>All Types</option>
+            <option value='Bug'>Bug/Error</option>
+            <option value='Feedback'>Feedback</option>
+            <option value='Feature Request'>Feature Request</option>
+            <option value='Other'>Other</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor='status'>Status</label>
+          <select
+            name='status'
+            id='status'
+            value={filters.status}
+            onChange={handleFilterChange}>
+            <option value=''>All Statuses</option>
+            <option value='Completed'>Completed</option>
+            <option value='In Progress'>In Progress</option>
+            <option value='Pending'>Pending</option>
+            <option value='Planned'>Planned</option>
+          </select>
+        </div>
+      </div>
 
       <table>
         <thead>
@@ -100,7 +104,9 @@ const SupportTickets = () => {
               <tr key={ticket._id}>
                 <td data-label='Type'>{ticket.category}</td>
                 <td data-label='Message'>{ticket.message}</td>
-                <td data-label='Status'>{ticket.status}</td>
+                <td data-label='Status'>
+                    <span className={`badge badge--${ticket.status.toLowerCase().replace(/\s+/g, '-')}`}>{ticket.status}</span>
+                  </td>
                 <td data-label='User'>{ticket.userName}</td>
                 <td data-label='Manage'>
                   <Link

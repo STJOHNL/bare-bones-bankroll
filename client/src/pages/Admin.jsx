@@ -37,7 +37,10 @@ const Admin = () => {
   return (
     <>
       <PageTitle title={'Admin'} />
-      <h2>Users</h2>
+      <div className='active-sessions-header'>
+        <h2>Users</h2>
+        <span style={{ fontSize: '0.85rem', opacity: 0.45 }}>{users.length} total</span>
+      </div>
       <table>
         <thead>
           <tr>
@@ -55,7 +58,9 @@ const Admin = () => {
                   {u.fName} {u.lName}
                 </td>
                 <td data-label='Email'>{u.email}</td>
-                <td data-label='Role'>{u.role}</td>
+                <td data-label='Role'>
+                    <span className={`badge badge--${u.role === 'admin' ? 'in-progress' : 'planned'}`}>{u.role}</span>
+                  </td>
                 <td data-label='Manage'>
                   <Link
                     to={`/profile/${u._id}`}

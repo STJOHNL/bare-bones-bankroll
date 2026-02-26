@@ -42,9 +42,9 @@ const ForgotPassword = () => {
           autoFocus
           required
         />
-        <button>Send password reset</button>
+        <button type='submit'>Send password reset</button>
       </form>
-      <div>
+      <div className='auth-links'>
         <Link to='/sign-in'>Return to sign in</Link>
       </div>
     </>

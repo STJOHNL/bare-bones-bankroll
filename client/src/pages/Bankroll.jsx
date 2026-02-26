@@ -60,9 +60,9 @@ const Bankroll = () => {
   const cashouts = transactions.filter(t => t.type === 'Cash-out').reduce((sum, t) => sum + t.amount, 0)
   const buyins = transactions.filter(t => t.type === 'Buy-in').reduce((sum, t) => sum + t.amount, 0)
   const promos = transactions.filter(t => t.type === 'Promo').reduce((sum, t) => sum + t.amount, 0)
-  const balance = cashouts + deposits + promos - buyins
+  const balance = deposits + cashouts + promos - withdrawals - buyins
 
-  const profit = balance - deposits
+  const profit = cashouts + promos - buyins
 
   const filteredTransactions = [...transactions]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -90,14 +90,15 @@ const Bankroll = () => {
         </div>
         <div className='stat'>
           <p>Balance</p>
-          <span className='stat__value'>${balance.toFixed(2)}</span>
+          <span className='stat__value' style={{ color: balance >= 0 ? 'var(--green)' : 'var(--red)' }}>${balance.toFixed(2)}</span>
         </div>
         <div className='stat'>
           <p>Profit</p>
-          <span className='stat__value'>${profit.toFixed(2)}</span>
+          <span className='stat__value' style={{ color: profit >= 0 ? 'var(--green)' : 'var(--red)' }}>${profit.toFixed(2)}</span>
         </div>
       </div>
 
+      <div className='card'>
       <form onSubmit={handleSubmit}>
         <h2>Add Transaction</h2>
         <label htmlFor='type'>Type</label>
@@ -146,6 +147,7 @@ const Bankroll = () => {
 
         <button type='submit'>Add</button>
       </form>
+      </div>
 
       <div className='filter-form'>
         <div>
@@ -209,7 +211,7 @@ const Bankroll = () => {
               filteredTransactions.map(t => (
                 <tr key={t._id}>
                   <td data-label='Type'>{t.type}</td>
-                  <td data-label='Amount'>${t.amount.toFixed(2)}</td>
+                  <td data-label='Amount' className={['Deposit', 'Cash-out', 'Promo'].includes(t.type) ? 'amount--pos' : 'amount--neg'}>${t.amount.toFixed(2)}</td>
                   <td data-label='Note'>{t.note || '—'}</td>
                   <td data-label='Date'>{t.date ? format(new Date(t.date), 'MM/dd/yy') : '—'}</td>
                   <td data-label='Manage'>
