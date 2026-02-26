@@ -115,6 +115,7 @@ export default {
   deleteSession: async (req, res, next) => {
     try {
       const deletedSession = await Session.findByIdAndDelete(req.params.id)
+      await Transaction.deleteMany({ sessionId: req.params.id })
 
       res.status(200).json(deletedSession)
     } catch (error) {

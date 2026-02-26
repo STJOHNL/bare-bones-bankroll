@@ -24,7 +24,7 @@ const Dashboard = () => {
   const navigate = useNavigate()
   const { getSessions, deleteSession, updateSession } = useSession()
   const { createTransaction } = useBankroll()
-  const { setTransactions } = useBankrollContext()
+  const { setTransactions, refetchTransactions } = useBankrollContext()
 
   const [isLoading, setIsLoading] = useState(false)
   const [sessions, setSessions] = useState([])
@@ -70,7 +70,10 @@ const Dashboard = () => {
   const handleDelete = async id => {
     if (!window.confirm('Delete this session?')) return
     const res = await deleteSession(id)
-    if (res) setSessions(prev => prev.filter(s => s._id !== id))
+    if (res) {
+      setSessions(prev => prev.filter(s => s._id !== id))
+      await refetchTransactions()
+    }
   }
 
   const handleEndSession = async session => {
@@ -92,7 +95,8 @@ const Dashboard = () => {
       const txn = await createTransaction({
         type: 'Cash-out',
         amount: cashout,
-        note: session.name
+        note: session.name,
+        sessionId: session._id
       })
       if (txn) setTransactions(prev => [txn, ...prev])
       setSessions(prev => prev.map(s => (s._id === session._id ? res : s)))
