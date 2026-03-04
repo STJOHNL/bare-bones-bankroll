@@ -39,6 +39,25 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
   const [end, setEnd] = useState(parentData?.end ? getLocalDateTime(parentData.end) : '')
   const [notes, setNotes] = useState(initSource.notes || '')
 
+  // Derived: live P&L
+  const buyinVal = parseFloat(buyin) || 0
+  const cashoutVal = parseFloat(cashout) || 0
+  const pnl = cashoutVal - buyinVal
+  const showPnl = buyin !== '' || cashout !== ''
+
+  // Derived: session duration
+  const getDuration = () => {
+    if (!start || !end) return ''
+    const diff = new Date(end) - new Date(start)
+    if (diff <= 0) return ''
+    const h = Math.floor(diff / 3600000)
+    const m = Math.floor((diff % 3600000) / 60000)
+    if (h === 0) return `${m}m`
+    if (m === 0) return `${h}h`
+    return `${h}h ${m}m`
+  }
+  const duration = getDuration()
+
   const handleSubmit = async e => {
     e.preventDefault()
 
@@ -100,56 +119,69 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
 
   return (
     <form onSubmit={handleSubmit}>
-      <h2>{type} Session</h2>
+      <h2>
+        {venue} {type} Session
+      </h2>
 
       {/* Game Details Section */}
       <div className='form-section'>
         <h3>Game Details</h3>
         <div>
-          <label htmlFor='venue'>Venue</label>
-          <select
-            name='venue'
-            id='venue'
-            value={venue}
-            onChange={e => setVenue(e.target.value)}
-            required>
-            <option value='Online'>Online</option>
-            <option value='Live'>Live</option>
-          </select>
+          <label>Type</label>
+          <div className='type-toggle'>
+            <button
+              type='button'
+              className={`type-toggle__btn${type === 'Cash' ? ' type-toggle__btn--active' : ''}`}
+              onClick={() => setType('Cash')}>
+              Cash
+            </button>
+            <button
+              type='button'
+              className={`type-toggle__btn${type === 'Tournament' ? ' type-toggle__btn--active' : ''}`}
+              onClick={() => setType('Tournament')}>
+              Tournament
+            </button>
+          </div>
+        </div>
+        <div className='form-row'>
+          <div>
+            <label htmlFor='venue'>Venue</label>
+            <select
+              name='venue'
+              id='venue'
+              value={venue}
+              onChange={e => setVenue(e.target.value)}
+              required>
+              <option value='Online'>Online</option>
+              <option value='Live'>Live</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor='game'>Game</label>
+            <select
+              name='game'
+              id='game'
+              value={game}
+              onChange={e => setGame(e.target.value)}
+              required>
+              <option value='NL'>NL</option>
+              <option value='PLO'>PLO</option>
+            </select>
+          </div>
         </div>
         <div>
-          <label htmlFor='type'>Type</label>
-          <select
-            name='type'
-            id='type'
-            value={type}
-            onChange={e => setType(e.target.value)}
-            required>
-            <option value='Cash'>Cash</option>
-            <option value='Tournament'>Tournament</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor='game'>Game Type</label>
-          <select
-            name='game'
-            id='game'
-            value={game}
-            onChange={e => setGame(e.target.value)}
-            required>
-            <option value='NL'>NL</option>
-            <option value='PLO'>PLO</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor='name'>Name</label>
+          <label htmlFor='name'>{type === 'Cash' ? 'Stake' : 'Tournament Name'}</label>
           <input
             type='text'
             name='name'
             id='name'
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder='Session Name'
+            placeholder={
+              type === 'Cash'
+                ? 'e.g. NL20, NL50, NL100, NL200'
+                : 'e.g. Sunday Million, WSOP Event #5, Home Game'
+            }
             required
           />
         </div>
@@ -158,59 +190,75 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
       {/* Buy-in & Expenses Section */}
       <div className='form-section'>
         <h3>Financial Details</h3>
-        <div>
-          <label htmlFor='buyin'>Buy-in ($)</label>
-          <input
-            type='number'
-            name='buyin'
-            id='buyin'
-            value={buyin}
-            onChange={e => setBuyin(e.target.value)}
-            placeholder='0.00'
-            step='0.01'
-            min='0'
-            required
-          />
+        <div className='form-row'>
+          <div>
+            <label htmlFor='buyin'>Buy-in ($)</label>
+            <input
+              type='number'
+              name='buyin'
+              id='buyin'
+              value={buyin}
+              onChange={e => setBuyin(e.target.value)}
+              placeholder='0.00'
+              step='0.01'
+              min='0'
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor='cashout'>Cash Out ($)</label>
+            <input
+              type='number'
+              name='cashout'
+              id='cashout'
+              value={cashout}
+              onChange={e => setCashout(e.target.value)}
+              placeholder='0.00'
+              step='0.01'
+              min='0'
+            />
+          </div>
         </div>
-        <div>
-          <label htmlFor='cashout'>Cash Out ($)</label>
-          <input
-            type='number'
-            name='cashout'
-            id='cashout'
-            value={cashout}
-            onChange={e => setCashout(e.target.value)}
-            placeholder='0.00'
-            step='0.01'
-            min='0'
-          />
-        </div>
+        {showPnl && (
+          <p className={`form-pnl ${pnl >= 0 ? 'amount--pos' : 'amount--neg'}`}>
+            {pnl >= 0 ? '+' : ''}
+            {pnl.toFixed(2)}
+          </p>
+        )}
       </div>
 
       {/* Time Section */}
       <div className='form-section'>
         <h3>Session Time</h3>
-        <div>
-          <label htmlFor='start'>Start Time</label>
-          <input
-            type='datetime-local'
-            name='start'
-            id='start'
-            value={start}
-            onChange={e => setStart(e.target.value)}
-            required
-          />
+        <div className='form-row'>
+          <div>
+            <label htmlFor='start'>Start</label>
+            <input
+              type='datetime-local'
+              name='start'
+              id='start'
+              value={start}
+              onChange={e => setStart(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor='end'>End</label>
+            <div className='input-action'>
+              <input
+                type='datetime-local'
+                name='end'
+                id='end'
+                value={end}
+                onChange={e => setEnd(e.target.value)}
+              />
+              <button type='button' className='btn--now' onClick={() => setEnd(getLocalDateTime())}>
+                Now
+              </button>
+            </div>
+          </div>
         </div>
-        <div>
-          <label htmlFor='end'>End Time</label>
-          <input
-            type='datetime-local'
-            name='end'
-            id='end'
-            value={end}
-            onChange={e => setEnd(e.target.value)}
-          />
-        </div>
+        {duration && <p className='form-hint'>Duration: {duration}</p>}
       </div>
 
       {/* Notes Section */}
