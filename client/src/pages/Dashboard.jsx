@@ -1,16 +1,18 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FaPencilAlt, FaTrashAlt, FaCopy } from 'react-icons/fa'
+import { FaPencilAlt, FaTrashAlt, FaCopy, FaSyncAlt, FaFlagCheckered, FaPlus } from 'react-icons/fa'
 import { format, startOfDay, startOfWeek, startOfMonth, startOfYear } from 'date-fns'
 import toast from 'react-hot-toast'
 // Custom Hooks
 import { useSession } from '../hooks/useSession'
-import { useBankroll } from '../hooks/useBankroll'
 // Context
 import { useBankrollContext } from '../context/BankrollContext'
 // Components
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
+
+const yesGifs = Object.values(import.meta.glob('../assets/NumGenGifs/yes*.gif', { eager: true, query: '?url', import: 'default' }))
+const noGifs = Object.values(import.meta.glob('../assets/NumGenGifs/no*.gif', { eager: true, query: '?url', import: 'default' }))
 
 const DATE_FILTERS = [
   { label: 'Today', value: 'today' },
@@ -23,22 +25,36 @@ const DATE_FILTERS = [
 const Dashboard = () => {
   const navigate = useNavigate()
   const { getSessions, deleteSession, updateSession } = useSession()
-  const { createTransaction } = useBankroll()
-  const { setTransactions, refetchTransactions } = useBankrollContext()
+  const { refetchTransactions } = useBankrollContext()
 
   const [isLoading, setIsLoading] = useState(false)
   const [sessions, setSessions] = useState([])
   const [cashoutValues, setCashoutValues] = useState({})
+  const [addValues, setAddValues] = useState({})
   const [dateFilter, setDateFilter] = useState('week')
   const [rngResult, setRngResult] = useState(null)
+  const [rngGif, setRngGif] = useState(null)
 
-  const rollDecision = () => setRngResult(Math.floor(Math.random() * 100) + 1)
+  const rollDecision = () => {
+    const roll = Math.floor(Math.random() * 100) + 1
+    const pool = roll >= 50 ? yesGifs : noGifs
+    setRngResult(roll)
+    setRngGif(pool[Math.floor(Math.random() * pool.length)])
+  }
 
   useEffect(() => {
     const fetchSessions = async () => {
       setIsLoading(true)
       const res = await getSessions()
-      setSessions(res || [])
+      const fetched = res || []
+      setSessions(fetched)
+      const initial = {}
+      fetched
+        .filter(s => !s.end && s.cashout)
+        .forEach(s => {
+          initial[s._id] = s.cashout
+        })
+      setCashoutValues(initial)
       setIsLoading(false)
     }
     fetchSessions()
@@ -48,17 +64,18 @@ const Dashboard = () => {
 
   const completedSessions = useMemo(() => {
     const done = sessions.filter(s => !!s.end)
-    const filtered = dateFilter === 'alltime'
-      ? done
-      : (() => {
-          const now = new Date()
-          let cutoff
-          if (dateFilter === 'today') cutoff = startOfDay(now)
-          else if (dateFilter === 'week') cutoff = startOfWeek(now, { weekStartsOn: 1 })
-          else if (dateFilter === 'month') cutoff = startOfMonth(now)
-          else if (dateFilter === 'year') cutoff = startOfYear(now)
-          return done.filter(s => s.start && new Date(s.start) >= cutoff)
-        })()
+    const filtered =
+      dateFilter === 'alltime'
+        ? done
+        : (() => {
+            const now = new Date()
+            let cutoff
+            if (dateFilter === 'today') cutoff = startOfDay(now)
+            else if (dateFilter === 'week') cutoff = startOfWeek(now, { weekStartsOn: 1 })
+            else if (dateFilter === 'month') cutoff = startOfMonth(now)
+            else if (dateFilter === 'year') cutoff = startOfYear(now)
+            return done.filter(s => s.start && new Date(s.start) >= cutoff)
+          })()
     return filtered.sort((a, b) => new Date(b.start) - new Date(a.start))
   }, [sessions, dateFilter])
 
@@ -70,12 +87,42 @@ const Dashboard = () => {
 
   const setCashout = (id, val) => setCashoutValues(prev => ({ ...prev, [id]: val }))
 
+  const handleAddToCashout = (session) => {
+    const increment = parseFloat(addValues[session._id]) || 0
+    if (!increment) return
+    const current = parseFloat(cashoutValues[session._id]) ?? session.cashout ?? 0
+    setCashoutValues(prev => ({ ...prev, [session._id]: (current + increment).toFixed(2) }))
+    setAddValues(prev => ({ ...prev, [session._id]: '' }))
+  }
+
   const handleDelete = async id => {
     if (!window.confirm('Delete this session?')) return
     const res = await deleteSession(id)
     if (res) {
       setSessions(prev => prev.filter(s => s._id !== id))
       await refetchTransactions()
+    }
+  }
+
+  const handleUpdateCashout = async session => {
+    const cashout = parseFloat(cashoutValues[session._id]) || 0
+    const formData = {
+      id: session._id,
+      venue: session.venue,
+      type: session.type,
+      game: session.game,
+      name: session.name,
+      buyin: session.buyin,
+      cashout,
+      start: session.start,
+      end: session.end || '',
+      notes: session.notes || ''
+    }
+    const res = await updateSession(formData)
+    if (res) {
+      await refetchTransactions()
+      setSessions(prev => prev.map(s => (s._id === session._id ? res : s)))
+      toast.success('Cashout updated!')
     }
   }
 
@@ -95,13 +142,7 @@ const Dashboard = () => {
     }
     const res = await updateSession(formData)
     if (res) {
-      const txn = await createTransaction({
-        type: 'Cash-out',
-        amount: cashout,
-        note: session.name,
-        sessionId: session._id
-      })
-      if (txn) setTransactions(prev => [txn, ...prev])
+      await refetchTransactions()
       setSessions(prev => prev.map(s => (s._id === session._id ? res : s)))
       setCashoutValues(prev => {
         const n = { ...prev }
@@ -157,21 +198,30 @@ const Dashboard = () => {
         </div>
       </div>
       {/* Play Decision RNG */}
-      <div className='rng-widget'>
+      <div className={`rng-widget${rngResult !== null ? ' rng-widget--expanded' : ''}`}>
         <div className='rng-widget__left'>
-          <h2>Play Decision</h2>
-          <button className='btn btn--primary' onClick={rollDecision}>Roll</button>
+          <p>Play Decision</p>
+          <button
+            className='btn btn--primary'
+            onClick={rollDecision}>
+            Roll
+          </button>
         </div>
-        {rngResult !== null && (
-          <div className='rng-widget__result'>
-            <span className='rng-widget__number'>{rngResult}</span>
-            <span
-              className='rng-widget__label'
-              style={{ color: rngResult >= 50 ? 'var(--green)' : 'var(--red)' }}>
-              {rngResult >= 50 ? 'Aggressive' : 'Passive'}
-            </span>
-          </div>
-        )}
+        <div className='rng-widget__result'>
+          {rngResult !== null ? (
+            <>
+              {rngGif && <img src={rngGif} alt='' className='rng-widget__gif' />}
+              <span className='rng-widget__number'>{rngResult}</span>
+              <span
+                className='rng-widget__label'
+                style={{ color: rngResult >= 50 ? 'var(--green)' : 'var(--red)' }}>
+                {rngResult >= 50 ? 'Aggressive' : 'Passive'}
+              </span>
+            </>
+          ) : (
+            <span style={{ opacity: 0.35, fontSize: '0.85rem' }}>—</span>
+          )}
+        </div>
       </div>
 
       {/* Active Sessions */}
@@ -191,10 +241,32 @@ const Dashboard = () => {
               className='active-session'
               key={session._id}>
               <div className='active-session__top'>
-                <span className='active-session__name'>{session.name}</span>
-                <span className='active-session__meta'>
-                  {session.venue} · {session.type} · {session.game}
-                </span>
+                <div>
+                  <span className='active-session__name'>{session.name}</span>
+                  <span className='active-session__meta'>
+                    {session.venue} · {session.type} · {session.game}
+                  </span>
+                </div>
+                <div className='active-session__manage'>
+                  <button
+                    onClick={() => navigate('/sessions/new', { state: { prefill: session } })}
+                    className='btn btn--subtle'
+                    title='Duplicate'>
+                    <FaCopy className='btn--icon' />
+                  </button>
+                  <Link
+                    to={`/sessions/${session._id}/edit`}
+                    className='btn btn--subtle'
+                    title='Edit'>
+                    <FaPencilAlt className='btn--icon' />
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(session._id)}
+                    className='btn btn--subtle'
+                    title='Delete'>
+                    <FaTrashAlt className='btn--icon--danger' />
+                  </button>
+                </div>
               </div>
               <div className='active-session__info'>
                 <span>
@@ -207,35 +279,52 @@ const Dashboard = () => {
               <div className='active-session__actions'>
                 <input
                   type='number'
-                  value={cashoutValues[session._id] || ''}
+                  value={cashoutValues[session._id] ?? ''}
                   onChange={e => setCashout(session._id, e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleEndSession(session)}
+                  onKeyDown={e => e.key === 'Enter' && handleUpdateCashout(session)}
                   placeholder='Cash out $'
                   step='0.01'
                   min='0'
                 />
+                <div className='active-session__add'>
+                  <input
+                    type='number'
+                    value={addValues[session._id] || ''}
+                    onChange={e => setAddValues(prev => ({ ...prev, [session._id]: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handleAddToCashout(session)}
+                    placeholder='+ add'
+                    step='0.01'
+                    min='0'
+                  />
+                  <button
+                    onClick={() => handleAddToCashout(session)}
+                    className='btn btn--subtle'
+                    title='Add to cashout'>
+                    <FaPlus className='btn--icon' />
+                  </button>
+                </div>
+                {cashoutValues[session._id] !== undefined &&
+                  (() => {
+                    const pnl = (parseFloat(cashoutValues[session._id]) || 0) - session.buyin
+                    return (
+                      <span
+                        className='active-session__pnl'
+                        style={{ color: pnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                        {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
+                      </span>
+                    )
+                  })()}
+                <button
+                  onClick={() => handleUpdateCashout(session)}
+                  className='btn btn--subtle'
+                  title='Update Cashout'>
+                  <FaSyncAlt className='btn--icon' />
+                </button>
                 <button
                   onClick={() => handleEndSession(session)}
-                  className='btn btn--primary'>
-                  End
-                </button>
-                <button
-                  onClick={() => navigate('/sessions/new', { state: { prefill: session } })}
-                  className='btn btn--subtle'
-                  title='Duplicate'>
-                  <FaCopy className='btn--icon' />
-                </button>
-                <Link
-                  to={`/sessions/${session._id}/edit`}
-                  className='btn btn--subtle'
-                  title='Edit'>
-                  <FaPencilAlt className='btn--icon' />
-                </Link>
-                <button
-                  onClick={() => handleDelete(session._id)}
-                  className='btn btn--subtle'
-                  title='Delete'>
-                  <FaTrashAlt className='btn--icon--danger' />
+                  className='btn btn--primary'
+                  title='End Session'>
+                  <FaFlagCheckered className='btn--icon' />
                 </button>
               </div>
             </div>
@@ -245,7 +334,9 @@ const Dashboard = () => {
         <p className='no-active'>No active sessions.</p>
       )}
 
-      <div className='active-sessions-header' style={{ marginTop: '2rem' }}>
+      <div
+        className='active-sessions-header'
+        style={{ marginTop: '2rem' }}>
         <h2>History</h2>
       </div>
 

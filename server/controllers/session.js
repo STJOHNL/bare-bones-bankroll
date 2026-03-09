@@ -68,15 +68,24 @@ export default {
         { new: true }
       )
 
-      // Update linked transactions by sessionId
+      // Upsert Buy-in transaction
       await Transaction.findOneAndUpdate(
         { sessionId: id, type: 'Buy-in' },
-        { amount: buyin, note: name, date: start || end }
+        { amount: buyin, note: name, date: start || end },
+        { upsert: true }
       )
-      await Transaction.findOneAndUpdate(
-        { sessionId: id, type: 'Cash-out' },
-        { amount: cashout, note: name, date: end }
-      )
+
+      // Upsert Cash-out whenever a cashout value exists (covers active tournaments
+      // with incremental winnings like bounties/PKOs), otherwise remove any stale one
+      if (cashout > 0) {
+        await Transaction.findOneAndUpdate(
+          { sessionId: id, type: 'Cash-out' },
+          { amount: cashout, note: name, date: end || start },
+          { upsert: true }
+        )
+      } else {
+        await Transaction.findOneAndDelete({ sessionId: id, type: 'Cash-out' })
+      }
 
       res.status(200).json(updatedSession)
     } catch (error) {
