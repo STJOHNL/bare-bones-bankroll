@@ -30,6 +30,9 @@ const Dashboard = () => {
   const [sessions, setSessions] = useState([])
   const [cashoutValues, setCashoutValues] = useState({})
   const [dateFilter, setDateFilter] = useState('week')
+  const [rngResult, setRngResult] = useState(null)
+
+  const rollDecision = () => setRngResult(Math.floor(Math.random() * 100) + 1)
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -153,6 +156,24 @@ const Dashboard = () => {
           </span>
         </div>
       </div>
+      {/* Play Decision RNG */}
+      <div className='rng-widget'>
+        <div className='rng-widget__left'>
+          <h2>Play Decision</h2>
+          <button className='btn btn--primary' onClick={rollDecision}>Roll</button>
+        </div>
+        {rngResult !== null && (
+          <div className='rng-widget__result'>
+            <span className='rng-widget__number'>{rngResult}</span>
+            <span
+              className='rng-widget__label'
+              style={{ color: rngResult >= 50 ? 'var(--green)' : 'var(--red)' }}>
+              {rngResult >= 50 ? 'Aggressive' : 'Passive'}
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* Active Sessions */}
       <div className='active-sessions-header'>
         <h2>Active</h2>
