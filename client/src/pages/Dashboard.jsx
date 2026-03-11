@@ -46,15 +46,7 @@ const Dashboard = () => {
     const fetchSessions = async () => {
       setIsLoading(true)
       const res = await getSessions()
-      const fetched = res || []
-      setSessions(fetched)
-      const initial = {}
-      fetched
-        .filter(s => !s.end && s.cashout)
-        .forEach(s => {
-          initial[s._id] = s.cashout
-        })
-      setCashoutValues(initial)
+      setSessions(res || [])
       setIsLoading(false)
     }
     fetchSessions()
@@ -279,7 +271,7 @@ const Dashboard = () => {
               <div className='active-session__actions'>
                 <input
                   type='number'
-                  value={cashoutValues[session._id] ?? ''}
+                  value={cashoutValues[session._id] ?? session.cashout ?? ''}
                   onChange={e => setCashout(session._id, e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleUpdateCashout(session)}
                   placeholder='Cash out $'
@@ -303,9 +295,9 @@ const Dashboard = () => {
                     <FaPlus className='btn--icon' />
                   </button>
                 </div>
-                {cashoutValues[session._id] !== undefined &&
+                {(cashoutValues[session._id] !== undefined || session.cashout > 0) &&
                   (() => {
-                    const pnl = (parseFloat(cashoutValues[session._id]) || 0) - session.buyin
+                    const pnl = (parseFloat(cashoutValues[session._id] ?? session.cashout) || 0) - session.buyin
                     return (
                       <span
                         className='active-session__pnl'
