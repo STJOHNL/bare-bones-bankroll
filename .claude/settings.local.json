@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"href\\\\|<a \" /c/Projects/GitHub/bare-bones-bankroll/client/src --include=*.jsx)"
+    ]
+  }
+}

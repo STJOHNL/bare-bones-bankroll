@@ -1227,6 +1227,36 @@ h1.heading-xl {
   flex-wrap: wrap;
 }
 
+.download {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  border-top: 1px solid #2e2e2e;
+  border-bottom: 1px solid #2e2e2e;
+  margin-top: 1rem;
+}
+
+.download__title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+}
+
+.download__subtitle {
+  font-size: 0.95rem;
+  opacity: 0.6;
+  margin-bottom: 1.5rem;
+}
+
+.download__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .features {
   display: flex;
   flex-wrap: wrap;

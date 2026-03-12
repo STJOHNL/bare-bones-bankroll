@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { FaDollarSign, FaHistory, FaChartLine } from 'react-icons/fa'
+import { FaDollarSign, FaHistory, FaChartLine, FaWindows } from 'react-icons/fa'
 import PageTitle from '../components/PageTitle'
 
 const Home = () => {
@@ -16,6 +16,19 @@ const Home = () => {
           <Link to='/sign-up' className='btn btn--primary'>Get started</Link>
           <Link to='/sign-in' className='btn btn--outline'>Sign in</Link>
         </div>
+      </section>
+
+      <section className='download'>
+        <h2 className='download__title'>Get the Desktop App</h2>
+        <p className='download__subtitle'>Run Bare Bones Bankroll locally on your Windows machine.</p>
+        <a
+          href='https://github.com/STJOHNL/bare-bones-bankroll/releases/latest'
+          className='btn btn--primary download__btn'
+          target='_blank'
+          rel='noreferrer'
+        >
+          <FaWindows /> Download for Windows
+        </a>
       </section>
 
       <section className='features'>
