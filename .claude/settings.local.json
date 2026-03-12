@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -r \"href\\\\|<a \" /c/Projects/GitHub/bare-bones-bankroll/client/src --include=*.jsx)"
+      "Bash(grep -r \"href\\\\|<a \" /c/Projects/GitHub/bare-bones-bankroll/client/src --include=*.jsx)",
+      "Bash(npm install:*)",
+      "Bash(find /c/Projects/GitHub/bare-bones-bankroll -maxdepth 2 -name .env* -type f)"
     ]
   }
 }

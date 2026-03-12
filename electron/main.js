@@ -1,8 +1,9 @@
 'use strict'
 
-const { app, BrowserWindow, ipcMain, session } = require('electron')
+const { app, BrowserWindow, ipcMain, session, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const { autoUpdater } = require('electron-updater')
 
 const PORT = 5000
 
@@ -101,9 +102,39 @@ async function createWindow() {
 
 // ─── App lifecycle ────────────────────────────────────────────────────────────
 
+// ─── Auto-updater ─────────────────────────────────────────────────────────────
+
+function initAutoUpdater() {
+  if (!app.isPackaged) return
+
+  autoUpdater.checkForUpdatesAndNotify()
+
+  autoUpdater.on('update-available', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Available',
+      message: 'A new version of Bare Bones Bankroll is downloading in the background.',
+    })
+  })
+
+  autoUpdater.on('update-downloaded', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Ready',
+      message: 'Update downloaded. The app will restart to apply the update.',
+      buttons: ['Restart Now', 'Later'],
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall()
+    })
+  })
+}
+
+// ─── App lifecycle ────────────────────────────────────────────────────────────
+
 app.whenReady().then(async () => {
   await startServer()
   await createWindow()
+  initAutoUpdater()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
