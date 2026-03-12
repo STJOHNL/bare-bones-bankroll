@@ -891,6 +891,12 @@ h1.heading-xl {
   white-space: nowrap;
 }
 
+.active-session__projected {
+  font-size: 0.75rem;
+  opacity: 0.45;
+  white-space: nowrap;
+}
+
 .no-active {
   margin-top: 0.5rem;
   opacity: 0.4;

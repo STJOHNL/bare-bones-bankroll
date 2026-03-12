@@ -25,7 +25,7 @@ const DATE_FILTERS = [
 const Dashboard = () => {
   const navigate = useNavigate()
   const { getSessions, deleteSession, updateSession } = useSession()
-  const { refetchTransactions } = useBankrollContext()
+  const { refetchTransactions, balance } = useBankrollContext()
 
   const [isLoading, setIsLoading] = useState(false)
   const [sessions, setSessions] = useState([])
@@ -82,7 +82,7 @@ const Dashboard = () => {
   const handleAddToCashout = (session) => {
     const increment = parseFloat(addValues[session._id]) || 0
     if (!increment) return
-    const current = parseFloat(cashoutValues[session._id]) ?? session.cashout ?? 0
+    const current = parseFloat(cashoutValues[session._id] ?? session.cashout) || 0
     setCashoutValues(prev => ({ ...prev, [session._id]: (current + increment).toFixed(2) }))
     setAddValues(prev => ({ ...prev, [session._id]: '' }))
   }
@@ -97,7 +97,7 @@ const Dashboard = () => {
   }
 
   const handleUpdateCashout = async session => {
-    const cashout = parseFloat(cashoutValues[session._id]) || 0
+    const cashout = parseFloat(cashoutValues[session._id] ?? session.cashout) || 0
     const formData = {
       id: session._id,
       venue: session.venue,
@@ -119,7 +119,7 @@ const Dashboard = () => {
   }
 
   const handleEndSession = async session => {
-    const cashout = parseFloat(cashoutValues[session._id]) || 0
+    const cashout = parseFloat(cashoutValues[session._id] ?? session.cashout) || 0
     const formData = {
       id: session._id,
       venue: session.venue,
@@ -271,41 +271,49 @@ const Dashboard = () => {
               <div className='active-session__actions'>
                 <input
                   type='number'
-                  value={cashoutValues[session._id] ?? session.cashout ?? ''}
+                  value={cashoutValues[session._id] ?? (session.cashout || (session.type === 'Cash' ? session.buyin : ''))}
                   onChange={e => setCashout(session._id, e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleUpdateCashout(session)}
                   placeholder='Cash out $'
                   step='0.01'
                   min='0'
                 />
-                <div className='active-session__add'>
-                  <input
-                    type='number'
-                    value={addValues[session._id] || ''}
-                    onChange={e => setAddValues(prev => ({ ...prev, [session._id]: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && handleAddToCashout(session)}
-                    placeholder='+ add'
-                    step='0.01'
-                    min='0'
-                  />
-                  <button
-                    onClick={() => handleAddToCashout(session)}
-                    className='btn btn--subtle'
-                    title='Add to cashout'>
-                    <FaPlus className='btn--icon' />
-                  </button>
-                </div>
-                {(cashoutValues[session._id] !== undefined || session.cashout > 0) &&
-                  (() => {
-                    const pnl = (parseFloat(cashoutValues[session._id] ?? session.cashout) || 0) - session.buyin
-                    return (
+                {session.type === 'Tournament' && (
+                  <div className='active-session__add'>
+                    <input
+                      type='number'
+                      value={addValues[session._id] || ''}
+                      onChange={e => setAddValues(prev => ({ ...prev, [session._id]: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && handleAddToCashout(session)}
+                      placeholder='+ add'
+                      step='0.01'
+                      min='0'
+                    />
+                    <button
+                      onClick={() => handleAddToCashout(session)}
+                      className='btn btn--subtle'
+                      title='Add to cashout'>
+                      <FaPlus className='btn--icon' />
+                    </button>
+                  </div>
+                )}
+                {(() => {
+                  const inputVal = parseFloat(cashoutValues[session._id] ?? (session.cashout || (session.type === 'Cash' ? session.buyin : 0))) || 0
+                  const pnl = inputVal - session.buyin
+                  const projected = balance + (inputVal - (session.cashout || 0))
+                  return (
+                    <>
                       <span
                         className='active-session__pnl'
                         style={{ color: pnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
                         {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
                       </span>
-                    )
-                  })()}
+                      <span className='active-session__projected'>
+                        → ${projected.toFixed(2)}
+                      </span>
+                    </>
+                  )
+                })()}
                 <button
                   onClick={() => handleUpdateCashout(session)}
                   className='btn btn--subtle'
