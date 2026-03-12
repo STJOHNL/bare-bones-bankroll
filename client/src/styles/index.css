@@ -1302,6 +1302,64 @@ h1.heading-xl {
 }
 
 /* ============================================= */
+/* Download section (Home page) */
+/* ============================================= */
+/* ============================================= */
+
+.download {
+  text-align: center;
+  padding: 2.5rem 1rem 1rem;
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.download__title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.download__subtitle {
+  font-size: 0.9rem;
+  opacity: 0.55;
+  margin-bottom: 1.75rem;
+}
+
+.download__cards {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.download__card {
+  background-color: var(--alt-background);
+  border: 1px solid #3a3a3a;
+  border-radius: var(--radius);
+  padding: 1.75rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 11rem;
+}
+
+.download__icon {
+  font-size: 2rem;
+  color: var(--light);
+  opacity: 0.8;
+}
+
+.download__platform {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.25rem;
+}
+
+/* ============================================= */
 /* ============================================= */
 /* Mobile */
 /* ============================================= */

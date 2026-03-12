@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom'
-import { FaDollarSign, FaHistory, FaChartLine } from 'react-icons/fa'
+import { FaDollarSign, FaHistory, FaChartLine, FaApple, FaWindows } from 'react-icons/fa'
 import PageTitle from '../components/PageTitle'
+
+const GITHUB = 'https://github.com/STJOHNL/bare-bones-bankroll/releases/latest/download'
+const DOWNLOAD_MAC = `${GITHUB}/Bare.Bones.Bankroll.dmg`
+const DOWNLOAD_WIN = `${GITHUB}/Bare.Bones.Bankroll.Setup.exe`
 
 const Home = () => {
   return (
@@ -39,6 +43,27 @@ const Home = () => {
           <p className='feature__desc'>
             View your win rate, P/L, and average session results filtered by day, week, month, or all time.
           </p>
+        </div>
+      </section>
+
+      <section className='download'>
+        <h2 className='download__title'>Download the App</h2>
+        <p className='download__subtitle'>Get the native desktop experience on your platform.</p>
+        <div className='download__cards'>
+          <div className='download__card'>
+            <FaApple className='download__icon' />
+            <span className='download__platform'>macOS</span>
+            <a href={DOWNLOAD_MAC} className='btn btn--primary' download>
+              Download .dmg
+            </a>
+          </div>
+          <div className='download__card'>
+            <FaWindows className='download__icon' />
+            <span className='download__platform'>Windows</span>
+            <a href={DOWNLOAD_WIN} className='btn btn--primary' download>
+              Download .exe
+            </a>
+          </div>
         </div>
       </section>
     </>

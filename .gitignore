@@ -1,0 +1,5 @@
+node_modules
+dist-electron/
+client/dist/
+server/config/.env
+*.local

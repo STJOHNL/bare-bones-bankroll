@@ -8,7 +8,7 @@ const generateToken = (res, user) => {
 
   res.cookie('token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV !== 'development', // True in production
+    secure: process.env.NODE_ENV !== 'development' && !process.env.ELECTRON, // False in Electron (http://localhost)
     sameSite: 'strict',
     maxAge: 24 * 60 * 60 * 1000, // 1 day
   })

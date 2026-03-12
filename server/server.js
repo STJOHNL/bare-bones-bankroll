@@ -86,6 +86,12 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/dist/index.html'))
 })
 
-app.listen(port, () => {
-  appLogger.log(`Server is running on port ${port}`)
-})
+// In Electron mode the main process calls app.listen() itself after import;
+// otherwise start listening immediately (normal web / CLI usage).
+if (!process.env.ELECTRON) {
+  app.listen(port, () => {
+    appLogger.log(`Server is running on port ${port}`)
+  })
+}
+
+export { app }
