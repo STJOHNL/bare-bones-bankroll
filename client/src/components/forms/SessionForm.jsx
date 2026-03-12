@@ -126,19 +126,23 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
       {/* Game Details Section */}
       <div className='form-section'>
         <h3>Game Details</h3>
-        <div>
-          <label>Type</label>
+        {/* Toggle buttons are not inputs so htmlFor doesn't apply — use role="group"
+            with aria-label to give screen readers the field name */}
+        <div role='group' aria-label='Session type'>
+          <span aria-hidden='true'>Type</span>
           <div className='type-toggle'>
             <button
               type='button'
               className={`type-toggle__btn${type === 'Cash' ? ' type-toggle__btn--active' : ''}`}
-              onClick={() => setType('Cash')}>
+              onClick={() => setType('Cash')}
+              aria-pressed={type === 'Cash'}>
               Cash
             </button>
             <button
               type='button'
               className={`type-toggle__btn${type === 'Tournament' ? ' type-toggle__btn--active' : ''}`}
-              onClick={() => setType('Tournament')}>
+              onClick={() => setType('Tournament')}
+              aria-pressed={type === 'Tournament'}>
               Tournament
             </button>
           </div>

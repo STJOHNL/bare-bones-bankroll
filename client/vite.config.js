@@ -13,4 +13,10 @@ export default defineConfig({
       changeOrigin: true,
     },
   },
+  test: {
+    // Use jsdom so React components can render in a browser-like environment
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setup.js',
+  },
 })

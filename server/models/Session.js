@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 
 const sessionSchema = new mongoose.Schema(
   {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     venue: { type: String, enum: ['Online', 'Live'], required: true },
     type: { type: String, enum: ['Cash', 'Tournament'], required: true },
     game: { type: String, enum: ['NL', 'PLO'], required: true },

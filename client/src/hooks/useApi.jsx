@@ -46,9 +46,7 @@ export const useApi = onUnauthorized => {
       const { data } = await api.put(url, body)
       return data
     } catch (error) {
-      handleError(error)
-      // Don't throw after showing toast
-      return null
+      handleError(error) // handleError always throws, so components can manage loading state
     }
   }
 
@@ -57,9 +55,7 @@ export const useApi = onUnauthorized => {
       const { data } = await api.delete(url)
       return data
     } catch (error) {
-      handleError(error)
-      // Don't throw after showing toast
-      return null
+      handleError(error) // handleError always throws, so components can manage loading state
     }
   }
 

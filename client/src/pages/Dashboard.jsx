@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FaPencilAlt, FaTrashAlt, FaCopy, FaSyncAlt, FaFlagCheckered, FaPlus } from 'react-icons/fa'
 import { format, startOfDay, startOfWeek, startOfMonth, startOfYear } from 'date-fns'
@@ -35,12 +35,12 @@ const Dashboard = () => {
   const [rngResult, setRngResult] = useState(null)
   const [rngGif, setRngGif] = useState(null)
 
-  const rollDecision = () => {
+  const rollDecision = useCallback(() => {
     const roll = Math.floor(Math.random() * 100) + 1
     const pool = roll >= 50 ? yesGifs : noGifs
     setRngResult(roll)
     setRngGif(pool[Math.floor(Math.random() * pool.length)])
-  }
+  }, [])
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -71,79 +71,108 @@ const Dashboard = () => {
     return filtered.sort((a, b) => new Date(b.start) - new Date(a.start))
   }, [sessions, dateFilter])
 
-  const totalPL = completedSessions.reduce((sum, s) => sum + (s.cashout - s.buyin), 0)
-  const sessionCount = completedSessions.length
-  const wins = completedSessions.filter(s => s.cashout - s.buyin > 0).length
+  // Single-pass reduce avoids iterating completedSessions 4 times for stats
+  const { totalPL, sessionCount, wins } = useMemo(
+    () =>
+      completedSessions.reduce(
+        (acc, s) => {
+          const pl = (s.cashout ?? 0) - s.buyin
+          acc.totalPL += pl
+          acc.sessionCount += 1
+          if (pl > 0) acc.wins += 1
+          return acc
+        },
+        { totalPL: 0, sessionCount: 0, wins: 0 }
+      ),
+    [completedSessions]
+  )
   const winRate = sessionCount > 0 ? (wins / sessionCount) * 100 : 0
   const avgPerSession = sessionCount > 0 ? totalPL / sessionCount : 0
 
-  const setCashout = (id, val) => setCashoutValues(prev => ({ ...prev, [id]: val }))
+  const setCashout = useCallback(
+    (id, val) => setCashoutValues(prev => ({ ...prev, [id]: val })),
+    []
+  )
 
-  const handleAddToCashout = (session) => {
-    const increment = parseFloat(addValues[session._id]) || 0
-    if (!increment) return
-    const current = parseFloat(cashoutValues[session._id] ?? session.cashout) || 0
-    setCashoutValues(prev => ({ ...prev, [session._id]: (current + increment).toFixed(2) }))
-    setAddValues(prev => ({ ...prev, [session._id]: '' }))
-  }
+  // useCallback prevents new function references on every render, avoiding
+  // unnecessary re-renders in session list items that receive these as props
+  const handleAddToCashout = useCallback(
+    session => {
+      const increment = parseFloat(addValues[session._id]) || 0
+      if (!increment) return
+      const current = parseFloat(cashoutValues[session._id] ?? session.cashout) || 0
+      setCashoutValues(prev => ({ ...prev, [session._id]: (current + increment).toFixed(2) }))
+      setAddValues(prev => ({ ...prev, [session._id]: '' }))
+    },
+    [addValues, cashoutValues]
+  )
 
-  const handleDelete = async id => {
-    if (!window.confirm('Delete this session?')) return
-    const res = await deleteSession(id)
-    if (res) {
-      setSessions(prev => prev.filter(s => s._id !== id))
-      await refetchTransactions()
-    }
-  }
+  const handleDelete = useCallback(
+    async id => {
+      if (!window.confirm('Delete this session?')) return
+      const res = await deleteSession(id)
+      if (res) {
+        setSessions(prev => prev.filter(s => s._id !== id))
+        await refetchTransactions()
+      }
+    },
+    [deleteSession, refetchTransactions]
+  )
 
-  const handleUpdateCashout = async session => {
-    const cashout = parseFloat(cashoutValues[session._id] ?? session.cashout) || 0
-    const formData = {
-      id: session._id,
-      venue: session.venue,
-      type: session.type,
-      game: session.game,
-      name: session.name,
-      buyin: session.buyin,
-      cashout,
-      start: session.start,
-      end: session.end || '',
-      notes: session.notes || ''
-    }
-    const res = await updateSession(formData)
-    if (res) {
-      await refetchTransactions()
-      setSessions(prev => prev.map(s => (s._id === session._id ? res : s)))
-      toast.success('Cashout updated!')
-    }
-  }
+  const handleUpdateCashout = useCallback(
+    async session => {
+      const cashout = parseFloat(cashoutValues[session._id] ?? session.cashout) || 0
+      const formData = {
+        id: session._id,
+        venue: session.venue,
+        type: session.type,
+        game: session.game,
+        name: session.name,
+        buyin: session.buyin,
+        cashout,
+        start: session.start,
+        end: session.end || '',
+        notes: session.notes || ''
+      }
+      const res = await updateSession(formData)
+      if (res) {
+        await refetchTransactions()
+        setSessions(prev => prev.map(s => (s._id === session._id ? res : s)))
+        toast.success('Cashout updated!')
+      }
+    },
+    [cashoutValues, updateSession, refetchTransactions]
+  )
 
-  const handleEndSession = async session => {
-    const cashout = parseFloat(cashoutValues[session._id] ?? session.cashout) || 0
-    const formData = {
-      id: session._id,
-      venue: session.venue,
-      type: session.type,
-      game: session.game,
-      name: session.name,
-      buyin: session.buyin,
-      cashout,
-      start: session.start,
-      end: new Date().toISOString(),
-      notes: session.notes || ''
-    }
-    const res = await updateSession(formData)
-    if (res) {
-      await refetchTransactions()
-      setSessions(prev => prev.map(s => (s._id === session._id ? res : s)))
-      setCashoutValues(prev => {
-        const n = { ...prev }
-        delete n[session._id]
-        return n
-      })
-      toast.success('Session ended!')
-    }
-  }
+  const handleEndSession = useCallback(
+    async session => {
+      const cashout = parseFloat(cashoutValues[session._id] ?? session.cashout) || 0
+      const formData = {
+        id: session._id,
+        venue: session.venue,
+        type: session.type,
+        game: session.game,
+        name: session.name,
+        buyin: session.buyin,
+        cashout,
+        start: session.start,
+        end: new Date().toISOString(),
+        notes: session.notes || ''
+      }
+      const res = await updateSession(formData)
+      if (res) {
+        await refetchTransactions()
+        setSessions(prev => prev.map(s => (s._id === session._id ? res : s)))
+        setCashoutValues(prev => {
+          const n = { ...prev }
+          delete n[session._id]
+          return n
+        })
+        toast.success('Session ended!')
+      }
+    },
+    [cashoutValues, updateSession, refetchTransactions]
+  )
 
   if (isLoading) return <Loader />
 
@@ -189,17 +218,19 @@ const Dashboard = () => {
           </span>
         </div>
       </div>
+
       {/* Play Decision RNG */}
       <div className={`rng-widget${rngResult !== null ? ' rng-widget--expanded' : ''}`}>
         <div className='rng-widget__left'>
           <p>Play Decision</p>
           <button
             className='btn btn--primary'
-            onClick={rollDecision}>
+            onClick={rollDecision}
+            aria-label='Roll play decision'>
             Roll
           </button>
         </div>
-        <div className='rng-widget__result'>
+        <div className='rng-widget__result' aria-live='polite'>
           {rngResult !== null ? (
             <>
               {rngGif && <img src={rngGif} alt='' className='rng-widget__gif' />}
@@ -243,19 +274,22 @@ const Dashboard = () => {
                   <button
                     onClick={() => navigate('/sessions/new', { state: { prefill: session } })}
                     className='btn btn--subtle'
-                    title='Duplicate'>
+                    title='Duplicate'
+                    aria-label={`Duplicate ${session.name}`}>
                     <FaCopy className='btn--icon' />
                   </button>
                   <Link
                     to={`/sessions/${session._id}/edit`}
                     className='btn btn--subtle'
-                    title='Edit'>
+                    title='Edit'
+                    aria-label={`Edit ${session.name}`}>
                     <FaPencilAlt className='btn--icon' />
                   </Link>
                   <button
                     onClick={() => handleDelete(session._id)}
                     className='btn btn--subtle'
-                    title='Delete'>
+                    title='Delete'
+                    aria-label={`Delete ${session.name}`}>
                     <FaTrashAlt className='btn--icon--danger' />
                   </button>
                 </div>
@@ -277,6 +311,7 @@ const Dashboard = () => {
                   placeholder='Cash out $'
                   step='0.01'
                   min='0'
+                  aria-label='Cash out amount'
                 />
                 {session.type === 'Tournament' && (
                   <div className='active-session__add'>
@@ -288,11 +323,13 @@ const Dashboard = () => {
                       placeholder='+ add'
                       step='0.01'
                       min='0'
+                      aria-label='Add to cashout'
                     />
                     <button
                       onClick={() => handleAddToCashout(session)}
                       className='btn btn--subtle'
-                      title='Add to cashout'>
+                      title='Add to cashout'
+                      aria-label='Add amount to cashout'>
                       <FaPlus className='btn--icon' />
                     </button>
                   </div>
@@ -317,13 +354,15 @@ const Dashboard = () => {
                 <button
                   onClick={() => handleUpdateCashout(session)}
                   className='btn btn--subtle'
-                  title='Update Cashout'>
+                  title='Update Cashout'
+                  aria-label='Save cashout'>
                   <FaSyncAlt className='btn--icon' />
                 </button>
                 <button
                   onClick={() => handleEndSession(session)}
                   className='btn btn--primary'
-                  title='End Session'>
+                  title='End Session'
+                  aria-label='End session'>
                   <FaFlagCheckered className='btn--icon' />
                 </button>
               </div>
@@ -374,17 +413,20 @@ const Dashboard = () => {
                   <button
                     onClick={() => navigate('/sessions/new', { state: { prefill: session } })}
                     className='btn btn--subtle'
-                    title='Duplicate'>
+                    title='Duplicate'
+                    aria-label={`Duplicate ${session.name}`}>
                     <FaCopy className='btn--icon' />
                   </button>
                   <Link
                     to={`/sessions/${session._id}/edit`}
-                    className='btn btn--subtle'>
+                    className='btn btn--subtle'
+                    aria-label={`Edit ${session.name}`}>
                     <FaPencilAlt className='btn--icon' />
                   </Link>
                   <button
                     onClick={() => handleDelete(session._id)}
-                    className='btn btn--subtle'>
+                    className='btn btn--subtle'
+                    aria-label={`Delete ${session.name}`}>
                     <FaTrashAlt className='btn--icon--danger' />
                   </button>
                 </td>

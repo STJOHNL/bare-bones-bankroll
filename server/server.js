@@ -1,8 +1,10 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import logger from 'morgan'
+import appLogger from './utils/logger.js'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
+import rateLimit from 'express-rate-limit'
 import connectDB from './config/database.js'
 import sgMail from '@sendgrid/mail'
 import { fileURLToPath } from 'url'
@@ -54,9 +56,19 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Rate limiting — restrict auth endpoints to 20 requests per 15 minutes per IP
+// to mitigate brute-force and credential-stuffing attacks
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' },
+})
+
 // Routes
 app.use('/api', mainRoutes)
-app.use('/api/auth', authRoutes)
+app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/user', userRoutes)
 app.use('/api/support', supportRoutes)
 app.use('/api/session', sessionRoutes)
@@ -75,5 +87,5 @@ app.get('*', (req, res) => {
 })
 
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`)
+  appLogger.log(`Server is running on port ${port}`)
 })

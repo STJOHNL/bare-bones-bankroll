@@ -7,11 +7,13 @@ export default {
   // @access PRIVATE
   getMessages: async (req, res, next) => {
     try {
-      const messages = await Message.find().sort({ createdDate: 1 })
+      // Admins see all tickets; regular users only see their own
+      const filter = req.user.role === 'Admin' ? {} : { userEmail: req.user.email }
+      const messages = await Message.find(filter).sort({ createdAt: 1 })
 
       res.status(200).json(messages)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
@@ -24,7 +26,7 @@ export default {
 
       res.status(200).json(message)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
@@ -33,9 +35,8 @@ export default {
   // @access PRIVATE
   createMessage: async (req, res, next) => {
     try {
-      let { category, message, status, userEmail, userName } = req.body
+      const { category, message, status, userEmail, userName } = req.body
 
-      // Update message document
       const messageObj = await Message.create({
         category,
         message,
@@ -44,34 +45,34 @@ export default {
         userName,
       })
 
-      // Replace with user option on FE
-      let admin = 'logan@devtivity.com'
+      // Admin email is configured via ADMIN_EMAIL env variable — no hardcoded addresses
+      const admin = process.env.ADMIN_EMAIL
 
       try {
         await mailer.sendMessageReceived({
           recipient: [admin],
-          name: userName?.split(' ')[0], // Return first name only
+          name: userName?.split(' ')[0],
           reply: userEmail,
           message,
           category,
         })
       } catch (error) {
-        console.error('Error sending first email:', error)
+        console.error('Error sending admin notification email:', error)
       }
 
       try {
         await mailer.sendMessageSent({
           recipient: userEmail,
-          name: userName?.split(' ')[0], // Return first name only
+          name: userName?.split(' ')[0],
           message,
         })
       } catch (error) {
-        console.error('Error sending second email:', error)
+        console.error('Error sending confirmation email:', error)
       }
 
       res.status(201).json(messageObj)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
@@ -80,26 +81,17 @@ export default {
   // @access PRIVATE
   editMessage: async (req, res, next) => {
     try {
-      let { id, category, message, status, userEmail, userName } = req.body
+      const { id, category, message, status, userEmail, userName } = req.body
 
-      // Update message document
       const updatedMessage = await Message.findByIdAndUpdate(
         id,
-        {
-          category,
-          message,
-          status,
-          userEmail,
-          userName,
-        },
-        {
-          new: true,
-        }
+        { category, message, status, userEmail, userName },
+        { new: true }
       )
 
       res.status(200).json(updatedMessage)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
@@ -112,7 +104,7 @@ export default {
 
       res.status(200).json(deletedMessage)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 }

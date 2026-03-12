@@ -19,7 +19,7 @@ const ResetPassword = () => {
     e.preventDefault()
 
     if (password !== confirmPassword) {
-      toast.error('Passwords to not match')
+      toast.error('Passwords do not match')
     } else {
       const formData = { password, confirmPassword, token }
       const res = await resetPassword(formData)

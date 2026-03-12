@@ -6,10 +6,11 @@ export default {
   // @access PRIVATE
   getTransactions: async (req, res, next) => {
     try {
-      const transactions = await Transaction.find().sort({ date: -1 })
+      // Scope to the authenticated user so users cannot see each other's transactions
+      const transactions = await Transaction.find({ user: req.user._id }).sort({ date: -1 })
       res.status(200).json(transactions)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
@@ -20,10 +21,11 @@ export default {
     try {
       const { type, amount, note, date, sessionId } = req.body
 
-      const transaction = await Transaction.create({ type, amount, note, date, sessionId })
+      // Attach authenticated user so the transaction is scoped correctly
+      const transaction = await Transaction.create({ type, amount, note, date, sessionId, user: req.user._id })
       res.status(201).json(transaction)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
@@ -32,10 +34,13 @@ export default {
   // @access PRIVATE
   deleteTransaction: async (req, res, next) => {
     try {
-      const deleted = await Transaction.findByIdAndDelete(req.params.id)
+      // Verify ownership before deleting
+      const deleted = await Transaction.findOneAndDelete({ _id: req.params.id, user: req.user._id })
+      if (!deleted) return res.status(404).json({ message: 'Transaction not found' })
+
       res.status(200).json(deleted)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   }
 }
