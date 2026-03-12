@@ -1,0 +1,8 @@
+{
+  "files.exclude": {
+    "dist-electron": true
+  },
+  "files.watcherExclude": {
+    "**/dist-electron/**": true
+  }
+}

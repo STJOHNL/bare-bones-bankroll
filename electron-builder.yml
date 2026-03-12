@@ -1,0 +1,28 @@
+appId: com.bbankroll.app
+productName: Bare Bones Bankroll
+
+directories:
+  output: dist-electron
+
+# Disable asar so process.chdir() and dotenv work correctly on the server
+asar: false
+
+# Files bundled into the app package
+files:
+  - electron/**/*
+  - server/**/*
+  - client/dist/**/*
+  - "!server/tests"
+  - "!server/node_modules/.cache"
+  - "!server/node_modules/.bin"
+  - "!**/*.test.js"
+  - "!**/.env.test"
+
+win:
+  target:
+    - nsis
+  icon: client/public/ms-icon-310x310.png
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

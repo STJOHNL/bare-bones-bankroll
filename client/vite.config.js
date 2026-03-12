@@ -8,9 +8,11 @@ export default defineConfig({
     global: 'window',
   },
   server: {
-    '/api': {
-      target: 'http://localhost:10000',
-      changeOrigin: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
   },
   test: {
