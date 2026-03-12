@@ -7,11 +7,12 @@ export default {
   // @access PRIVATE
   getSessions: async (req, res, next) => {
     try {
-      const sessions = await Session.find().sort({ startTime: -1 })
+      // Scope to the authenticated user so users cannot see each other's sessions
+      const sessions = await Session.find({ user: req.user._id }).sort({ start: -1 })
 
       res.status(200).json(sessions)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
@@ -20,11 +21,12 @@ export default {
   // @access PRIVATE
   getSessionById: async (req, res, next) => {
     try {
-      const session = await Session.findById(req.params.id)
+      const session = await Session.findOne({ _id: req.params.id, user: req.user._id })
+      if (!session) return res.status(404).json({ message: 'Session not found' })
 
       res.status(200).json(session)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
@@ -35,8 +37,9 @@ export default {
     try {
       const { venue, type, game, name, buyin, cashout, start, end, notes } = req.body
 
-      // Create session document
+      // Attach authenticated user so the session is scoped correctly
       const sessionObj = await Session.create({
+        user: req.user._id,
         venue,
         type,
         game,
@@ -50,7 +53,7 @@ export default {
 
       res.status(201).json(sessionObj)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
@@ -61,18 +64,22 @@ export default {
     try {
       const { id, venue, type, game, name, buyin, cashout, start, end, notes } = req.body
 
-      // Update session document
+      // Verify ownership before updating
+      const existing = await Session.findOne({ _id: id, user: req.user._id })
+      if (!existing) return res.status(404).json({ message: 'Session not found' })
+
       const updatedSession = await Session.findByIdAndUpdate(
         id,
         { venue, type, game, name, buyin, cashout, start, end, notes },
         { new: true }
       )
 
-      // Upsert Buy-in transaction
+      // Upsert Buy-in transaction — filter by sessionId + type to find existing record,
+      // include user in the update so newly created docs are scoped correctly
       await Transaction.findOneAndUpdate(
         { sessionId: id, type: 'Buy-in' },
-        { amount: buyin, note: name, date: start || end },
-        { upsert: true }
+        { amount: buyin, note: name, date: start || end, user: req.user._id },
+        { upsert: true, new: true }
       )
 
       // Upsert Cash-out whenever a cashout value exists (covers active tournaments
@@ -80,8 +87,8 @@ export default {
       if (cashout > 0) {
         await Transaction.findOneAndUpdate(
           { sessionId: id, type: 'Cash-out' },
-          { amount: cashout, note: name, date: end || start },
-          { upsert: true }
+          { amount: cashout, note: name, date: end || start, user: req.user._id },
+          { upsert: true, new: true }
         )
       } else {
         await Transaction.findOneAndDelete({ sessionId: id, type: 'Cash-out' })
@@ -89,7 +96,7 @@ export default {
 
       res.status(200).json(updatedSession)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
@@ -102,33 +109,41 @@ export default {
       if (!Array.isArray(sessions) || sessions.length === 0) {
         return res.status(400).json({ message: 'No sessions provided' })
       }
-      const created = await Session.insertMany(sessions, { ordered: false })
 
+      // Attach authenticated user to every imported session
+      const sessionDocs = sessions.map(s => ({ ...s, user: req.user._id }))
+      const created = await Session.insertMany(sessionDocs, { ordered: false })
+
+      // Create Buy-in and Cash-out transactions for completed sessions (end date exists)
       const txnDocs = []
       for (const s of created) {
-        if (s.end && s.buyin != null) txnDocs.push({ type: 'Buy-in', amount: s.buyin, note: s.name, date: s.start })
-        if (s.end && s.cashout != null) txnDocs.push({ type: 'Cash-out', amount: s.cashout, note: s.name, date: s.end })
+        if (s.end && s.buyin != null)
+          txnDocs.push({ type: 'Buy-in', amount: s.buyin, note: s.name, date: s.start, sessionId: s._id, user: req.user._id })
+        if (s.end && s.cashout != null)
+          txnDocs.push({ type: 'Cash-out', amount: s.cashout, note: s.name, date: s.end, sessionId: s._id, user: req.user._id })
       }
       const txns = txnDocs.length ? await Transaction.insertMany(txnDocs, { ordered: false }) : []
 
       res.status(201).json({ imported: created.length, transactions: txns })
     } catch (error) {
-      console.log(error)
-      res.status(400).json({ message: 'Import failed', error: error.message })
+      next(error)
     }
   },
 
-  // @desc Delete Sessions
+  // @desc Delete Session
   // @route DELETE /api/session/:id
   // @access PRIVATE
   deleteSession: async (req, res, next) => {
     try {
-      const deletedSession = await Session.findByIdAndDelete(req.params.id)
+      // Verify ownership before deleting
+      const session = await Session.findOneAndDelete({ _id: req.params.id, user: req.user._id })
+      if (!session) return res.status(404).json({ message: 'Session not found' })
+
       await Transaction.deleteMany({ sessionId: req.params.id })
 
-      res.status(200).json(deletedSession)
+      res.status(200).json(session)
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   }
 }

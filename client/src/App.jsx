@@ -2,6 +2,7 @@ import React from 'react'
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom'
 import PrivateRoute from './routes/PrivateRoute'
 import AdminRoute from './routes/AdminRoute'
+import ErrorBoundary from './components/ErrorBoundary'
 // Layouts
 import PublicLayout from './layouts/PublicLayout'
 import PrivateLayout from './layouts/PrivateLayout'
@@ -156,7 +157,13 @@ const router = createBrowserRouter(
 )
 
 function App() {
-  return <RouterProvider router={router} />
+  // ErrorBoundary wraps the entire app so any unhandled render error shows a
+  // graceful fallback instead of crashing the whole UI
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
+  )
 }
 
 export default App

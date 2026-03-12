@@ -5,12 +5,18 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "dev": "nodemon server.js",
     "start": "node server.js",
+    "lint": "eslint . --ext .js --max-warnings 0",
+    "format": "prettier --write \"**/*.js\"",
     "build-client": "cd ../client && npm install && npm run build",
     "build": "npm install && npm run build-client",
     "deploy": "npm run build && npm run start"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {}
   },
   "author": "Logan St. John",
   "license": "MIT",
@@ -22,11 +28,18 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "express-validator": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.1",
     "morgan": "^1.10.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.4",
+    "prettier": "^3.3.3",
+    "supertest": "^7.0.0"
   }
 }

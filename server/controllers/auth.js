@@ -4,11 +4,10 @@ import {
   generateResetToken,
 } from '../middleware/generateToken.js'
 import mailer from '../helpers/mailer.js'
-import error from '../middleware/error.js'
 
 export default {
   // @desc Sign in user
-  // @route POST /api/sign-in
+  // @route POST /api/auth/sign-in
   // @access PUBLIC
   signIn: async (req, res, next) => {
     try {
@@ -16,25 +15,23 @@ export default {
       email = email.toLowerCase()
 
       const user = await User.findOne({ email })
-      if (!user) {
-        return res.status(404).json({ message: 'Invalid credentials' })
+      if (!user || !(await user.matchPassword(password))) {
+        // Use the same message for both cases to avoid user enumeration
+        return res.status(401).json({ message: 'Invalid credentials' })
       }
 
-      if (user && (await user.matchPassword(password))) {
-        const userObj = user.toObject()
-        delete userObj.password
-        const token = generateToken(res, userObj)
+      const userObj = user.toObject()
+      delete userObj.password
+      const token = generateToken(res, userObj)
 
-        return res.status(201).json({ token })
-      }
-      return res.status(404).json({ message: 'Invalid credentials' })
-    } catch {
-      console.log(error)
+      return res.status(200).json({ token })
+    } catch (error) {
+      next(error)
     }
   },
 
   // @desc Sign up user
-  // @route POST /api/sign-up
+  // @route POST /api/auth/sign-up
   // @access PUBLIC
   signUp: async (req, res, next) => {
     try {
@@ -42,62 +39,51 @@ export default {
       email = email.toLowerCase()
 
       const userExists = await User.findOne({ email })
-
       if (userExists) {
-        res.status(400).json({ message: 'User with that email already exists' })
-        return
+        return res.status(400).json({ message: 'User with that email already exists' })
       }
 
       const user = await User.create({
         fName,
         lName,
         email,
-        password, // Password hashing in User model
+        password, // Password hashing handled by User model pre-save hook
       })
 
-      if (user) {
-        const userObj = user.toObject()
-        delete userObj.password
-        const token = generateToken(res, userObj)
-        res.status(201).json({ token, userObj })
-      } else {
-        res.status(400).json({ error: error.message })
-      }
-    } catch {
-      console.log(error)
+      const userObj = user.toObject()
+      delete userObj.password
+      const token = generateToken(res, userObj)
+      res.status(201).json({ token, userObj })
+    } catch (error) {
+      next(error)
     }
   },
 
   // @desc Sign out user
-  // @route POST /api/sign-out
+  // @route POST /api/auth/sign-out
   // @access PUBLIC
   signOut: async (req, res, next) => {
     try {
-      const cookies = req.cookies
-      if (!cookies?.token) return res.sendStatus(204) // No content
+      if (!req.cookies?.token) return res.sendStatus(204)
       res.cookie('token', '', {
         httpOnly: true,
         expires: new Date(0),
       })
-
       res.json({ message: 'User signed out' })
-    } catch {
-      console.log(error)
+    } catch (error) {
+      next(error)
     }
   },
 
   // @desc Send forgot password email
-  // @route POST /api/forgot-password
+  // @route POST /api/auth/forgot-password
   // @access PUBLIC
   forgotPassword: async (req, res, next) => {
     try {
-      let { email } = req.body
-      email = email?.toLowerCase()
+      const email = req.body.email?.toLowerCase()
       const user = await User.findOne({ email })
       if (!user) {
-        return res
-          .status(400)
-          .json({ message: 'User with that email does not exist' })
+        return res.status(400).json({ message: 'User with that email does not exist' })
       }
 
       const resetToken = generateResetToken()
@@ -105,21 +91,17 @@ export default {
       user.resetExpires = Date.now() + 3600000 // 1 hour
       await user.save()
 
-      let link = `${process.env.CLIENT_URL}/reset-password/${resetToken}`
+      const link = `${process.env.CLIENT_URL}/reset-password/${resetToken}`
+      mailer.sendPasswordReset({ recipient: user.email, name: user.fName, link })
 
-      mailer.sendPasswordReset({
-        recipient: user.email,
-        name: user.fName,
-        link,
-      })
-      res.status(201).json({ message: 'Email has been sent!' })
-    } catch {
-      console.log(error)
+      res.status(200).json({ message: 'Email has been sent!' })
+    } catch (error) {
+      next(error)
     }
   },
 
-  // @desc Reset users password
-  // @route POST /api/reset-password
+  // @desc Reset users password via email token
+  // @route POST /api/auth/reset-password
   // @access PUBLIC
   resetPassword: async (req, res, next) => {
     try {
@@ -137,16 +119,36 @@ export default {
       user.password = password
       user.resetToken = undefined
       user.resetExpires = undefined
-
       await user.save()
 
-      // mailer.sendPasswordUpdated({
-      //   recipient: user.email,
-      //   name: user.fName,
-      // })
-      res.status(201).json({ message: 'Password updated!' })
-    } catch {
-      console.log(error)
+      res.status(200).json({ message: 'Password updated!' })
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  // @desc Change password for authenticated user
+  // @route PUT /api/auth/change-password
+  // @access PRIVATE
+  changePassword: async (req, res, next) => {
+    try {
+      const { currentPassword, newPassword } = req.body
+
+      // Fetch from DB to get the hashed password (JWT payload may be stale)
+      const user = await User.findById(req.user._id)
+      if (!user) return res.status(404).json({ message: 'User not found' })
+
+      const isMatch = await user.matchPassword(currentPassword)
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Current password is incorrect' })
+      }
+
+      user.password = newPassword
+      await user.save()
+
+      res.status(200).json({ message: 'Password updated!' })
+    } catch (error) {
+      next(error)
     }
   },
 }

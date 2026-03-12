@@ -30,9 +30,7 @@ const SignUp = () => {
     e.preventDefault()
 
     if (password !== confirmPassword) {
-      toast.error('Passwords to not match')
-      const [password, setPassword] = useState('')
-      const [confirmPassword, setConfirmPassword] = useState('')
+      toast.error('Passwords do not match')
     } else {
       const formData = { fName, lName, email, password, confirmPassword }
 

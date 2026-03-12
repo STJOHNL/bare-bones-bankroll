@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { jwtDecode } from 'jwt-decode'
+import logger from '../utils/logger'
 
 const UserContext = createContext()
 
@@ -17,7 +18,7 @@ export const UserProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.log(error)
+      logger.error('Failed to read user from token:', error)
       localStorage.clear()
       setUser(null)
     }
