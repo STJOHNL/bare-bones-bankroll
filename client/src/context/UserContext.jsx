@@ -8,10 +8,17 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const readUserFromToken = () => {
+  const readUserFromToken = async () => {
     try {
-      const token = localStorage.getItem('token')
+      // In Electron, retrieve the persisted token from the main-process store;
+      // otherwise fall back to localStorage (standard web behaviour).
+      const token = window.electronAPI?.isElectron
+        ? await window.electronAPI.getToken()
+        : localStorage.getItem('token')
+
       if (token) {
+        // Sync to localStorage so any code that reads it directly keeps working.
+        localStorage.setItem('token', token)
         const payload = jwtDecode(token)
         if (Date.now() < payload.exp * 1000) {
           setUser(payload.user)
@@ -32,10 +39,14 @@ export const UserProvider = ({ children }) => {
   const signOutUser = () => {
     localStorage.clear()
     setUser(null)
+    // In Electron, also clear the persisted token so the next launch shows login.
+    window.electronAPI?.clearToken()
   }
 
   const setToken = (token) => {
     localStorage.setItem('token', token)
+    // In Electron, persist the token so subsequent launches skip sign-in.
+    window.electronAPI?.setToken(token)
     readUserFromToken()
   }
 
