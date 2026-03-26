@@ -72,7 +72,7 @@ const Dashboard = () => {
   }, [sessions, dateFilter])
 
   // Single-pass reduce avoids iterating completedSessions 4 times for stats
-  const { totalPL, sessionCount, wins } = useMemo(
+  const { totalPL, sessionCount, wins, totalMinutes } = useMemo(
     () =>
       completedSessions.reduce(
         (acc, s) => {
@@ -80,14 +80,18 @@ const Dashboard = () => {
           acc.totalPL += pl
           acc.sessionCount += 1
           if (pl > 0) acc.wins += 1
+          if (s.start && s.end) {
+            acc.totalMinutes += (new Date(s.end) - new Date(s.start)) / 60000
+          }
           return acc
         },
-        { totalPL: 0, sessionCount: 0, wins: 0 }
+        { totalPL: 0, sessionCount: 0, wins: 0, totalMinutes: 0 }
       ),
     [completedSessions]
   )
   const winRate = sessionCount > 0 ? (wins / sessionCount) * 100 : 0
   const avgPerSession = sessionCount > 0 ? totalPL / sessionCount : 0
+  const hourlyRate = totalMinutes > 0 ? totalPL / (totalMinutes / 60) : null
 
   const setCashout = useCallback(
     (id, val) => setCashoutValues(prev => ({ ...prev, [id]: val })),
@@ -215,6 +219,14 @@ const Dashboard = () => {
             className='stat__value'
             style={{ color: avgPerSession >= 0 ? 'var(--green)' : 'var(--red)' }}>
             ${avgPerSession.toFixed(2)}
+          </span>
+        </div>
+        <div className='stat'>
+          <p>Hourly Rate</p>
+          <span
+            className='stat__value'
+            style={{ color: hourlyRate === null ? undefined : hourlyRate >= 0 ? 'var(--green)' : 'var(--red)' }}>
+            {hourlyRate === null ? '—' : `$${hourlyRate.toFixed(2)}`}
           </span>
         </div>
       </div>

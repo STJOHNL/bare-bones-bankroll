@@ -3,8 +3,8 @@ import toast from 'react-hot-toast'
 
 export const useApi = onUnauthorized => {
   const api = axios.create({
-    baseURL: import.meta.env.DEV ? 'http://localhost:5000/api' : '/api',
-    withCredentials: true
+    baseURL: import.meta.env.DEV ? 'http://localhost:5004/api' : '/api',
+    withCredentials: true,
   })
 
   const handleError = error => {
@@ -63,6 +63,6 @@ export const useApi = onUnauthorized => {
     get,
     post,
     put,
-    del
+    del,
   }
 }

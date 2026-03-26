@@ -3,7 +3,9 @@
     "allow": [
       "Bash(grep -r \"href\\\\|<a \" /c/Projects/GitHub/bare-bones-bankroll/client/src --include=*.jsx)",
       "Bash(npm install:*)",
-      "Bash(find /c/Projects/GitHub/bare-bones-bankroll -maxdepth 2 -name .env* -type f)"
+      "Bash(find /c/Projects/GitHub/bare-bones-bankroll -maxdepth 2 -name .env* -type f)",
+      "Bash(tasklist /FI \"PID eq 13360\" /FO LIST)",
+      "Bash(cmd /c \"tasklist /FI \"\"PID eq 13360\"\" /FO LIST\")"
     ]
   }
 }
