@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { FaPencilAlt, FaTrashAlt, FaCopy, FaSyncAlt, FaFlagCheckered, FaPlus } from 'react-icons/fa'
 import { format, startOfDay, startOfWeek, startOfMonth, startOfYear } from 'date-fns'
 import toast from 'react-hot-toast'
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts'
 // Custom Hooks
 import { useSession } from '../hooks/useSession'
 // Context
@@ -31,6 +32,8 @@ const Dashboard = () => {
   const [sessions, setSessions] = useState([])
   const [cashoutValues, setCashoutValues] = useState({})
   const [addValues, setAddValues] = useState({})
+  const [rebuyValues, setRebuyValues] = useState({})
+  const [rebuyOpen, setRebuyOpen] = useState({})
   const [dateFilter, setDateFilter] = useState('week')
   const [rngResult, setRngResult] = useState(null)
   const [rngGif, setRngGif] = useState(null)
@@ -93,6 +96,19 @@ const Dashboard = () => {
   const avgPerSession = sessionCount > 0 ? totalPL / sessionCount : 0
   const hourlyRate = totalMinutes > 0 ? totalPL / (totalMinutes / 60) : null
 
+  const plChartData = useMemo(() => {
+    let cumulative = 0
+    return [...completedSessions]
+      .sort((a, b) => new Date(a.start) - new Date(b.start))
+      .map(s => {
+        cumulative += (s.cashout ?? 0) - s.buyin
+        return {
+          date: s.start ? format(new Date(s.start), 'MM/dd') : '',
+          pl: parseFloat(cumulative.toFixed(2)),
+        }
+      })
+  }, [completedSessions])
+
   const setCashout = useCallback(
     (id, val) => setCashoutValues(prev => ({ ...prev, [id]: val })),
     []
@@ -109,6 +125,35 @@ const Dashboard = () => {
       setAddValues(prev => ({ ...prev, [session._id]: '' }))
     },
     [addValues, cashoutValues]
+  )
+
+  const handleRebuy = useCallback(
+    async session => {
+      const increment = parseFloat(rebuyValues[session._id]) || 0
+      if (!increment) return
+      const newBuyin = parseFloat((session.buyin + increment).toFixed(2))
+      const formData = {
+        id: session._id,
+        venue: session.venue,
+        type: session.type,
+        game: session.game,
+        name: session.name,
+        buyin: newBuyin,
+        cashout: session.cashout || 0,
+        start: session.start,
+        end: session.end || '',
+        notes: session.notes || '',
+      }
+      const res = await updateSession(formData)
+      if (res) {
+        await refetchTransactions()
+        setSessions(prev => prev.map(s => (s._id === session._id ? res : s)))
+        setRebuyValues(prev => ({ ...prev, [session._id]: '' }))
+        setRebuyOpen(prev => ({ ...prev, [session._id]: false }))
+        toast.success('Buy-in updated!')
+      }
+    },
+    [rebuyValues, updateSession, refetchTransactions]
   )
 
   const handleDelete = useCallback(
@@ -231,6 +276,33 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* P/L Chart */}
+      {plChartData.length > 1 && (
+        <div className='pl-chart'>
+          <p className='pl-chart__title'>Cumulative P/L</p>
+          <ResponsiveContainer width='100%' height={220}>
+            <LineChart data={plChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+              <XAxis dataKey='date' tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis tickFormatter={v => `$${v}`} tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} tickLine={false} axisLine={false} width={60} />
+              <Tooltip
+                contentStyle={{ background: 'var(--alt-background)', border: '1px solid #3a3a3a', borderRadius: 'var(--radius)', fontSize: '0.85rem' }}
+                labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+                formatter={v => [`$${v.toFixed(2)}`, 'P/L']}
+              />
+              <ReferenceLine y={0} stroke='rgba(255,255,255,0.15)' strokeDasharray='4 4' />
+              <Line
+                type='monotone'
+                dataKey='pl'
+                stroke={plChartData[plChartData.length - 1]?.pl >= 0 ? 'var(--green)' : 'var(--red)'}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* Play Decision RNG */}
       <div className={`rng-widget${rngResult !== null ? ' rng-widget--expanded' : ''}`}>
         <div className='rng-widget__left'>
@@ -308,11 +380,35 @@ const Dashboard = () => {
               </div>
               <div className='active-session__info'>
                 <span>
-                  Buy-in: <strong>${session.buyin}</strong>
+                  <strong>${session.buyin}</strong> buy-in · {session.start ? format(new Date(session.start), 'h:mm a') : '—'}
                 </span>
-                <span>
-                  Started: <strong>{session.start ? format(new Date(session.start), 'h:mm a') : '—'}</strong>
-                </span>
+                {session.type === 'Cash' && (
+                  rebuyOpen[session._id] ? (
+                    <div className='active-session__rebuy'>
+                      <input
+                        type='number'
+                        value={rebuyValues[session._id] || ''}
+                        onChange={e => setRebuyValues(prev => ({ ...prev, [session._id]: e.target.value }))}
+                        onKeyDown={e => e.key === 'Enter' && handleRebuy(session)}
+                        placeholder='Rebuy amount'
+                        step='0.01'
+                        min='0'
+                        autoFocus
+                        aria-label='Rebuy amount'
+                      />
+                      <button onClick={() => handleRebuy(session)} className='btn btn--subtle' aria-label='Confirm rebuy'>
+                        <FaPlus className='btn--icon' />
+                      </button>
+                      <button onClick={() => setRebuyOpen(prev => ({ ...prev, [session._id]: false }))} className='btn btn--subtle' aria-label='Cancel rebuy'>✕</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setRebuyOpen(prev => ({ ...prev, [session._id]: true }))}
+                      className='active-session__rebuy-toggle'>
+                      + rebuy
+                    </button>
+                  )
+                )}
               </div>
               <div className='active-session__actions'>
                 <input
