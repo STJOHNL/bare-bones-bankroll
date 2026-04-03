@@ -25,6 +25,7 @@ import Support from './pages/Support'
 import NewSession from './pages/NewSession'
 import EditSession from './pages/EditSession'
 import Bankroll from './pages/Bankroll'
+import Reports from './pages/Reports'
 import SupportTickets from './pages/SupportTickets'
 import EditSupportTicket from './pages/EditSupportTicket'
 
@@ -115,6 +116,14 @@ const router = createBrowserRouter(
           element={
             <PrivateRoute>
               <Bankroll />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='reports'
+          element={
+            <PrivateRoute>
+              <Reports />
             </PrivateRoute>
           }
         />

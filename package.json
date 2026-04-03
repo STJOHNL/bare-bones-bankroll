@@ -1,6 +1,6 @@
 {
   "name": "bare-bones-bankroll",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "author": "Logan St. John",
   "description": "Poker bankroll tracker",
   "main": "electron/main.js",

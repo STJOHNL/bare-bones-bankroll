@@ -952,6 +952,123 @@ h1.heading-xl {
   font-size: 0.85rem;
 }
 
+.active-session__timer {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  opacity: 0.45;
+  font-variant-numeric: tabular-nums;
+}
+
+.td--notes {
+  max-width: 12rem;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+/* ============================================= */
+/* Confirm Modal                                 */
+/* ============================================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal {
+  background: var(--alt-background);
+  border: 1px solid #3a3a3a;
+  border-radius: var(--radius);
+  padding: 1.75rem 2rem;
+  max-width: 22rem;
+  width: 90%;
+}
+
+.modal__message {
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btn--danger {
+  background-color: var(--red);
+  color: #fff;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.btn--danger:hover {
+  opacity: 0.85;
+}
+
+/* ============================================= */
+/* Reports                                       */
+/* ============================================= */
+
+.reports-breakdowns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+}
+
+.reports-breakdown {
+  background: var(--alt-background);
+  border: 1px solid #3a3a3a;
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+
+.reports-breakdown__title {
+  font-size: 0.75rem;
+  opacity: 0.5;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+.reports-breakdown table {
+  margin-top: 0;
+}
+
+.reports-breakdown thead {
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.reports-breakdown th {
+  font-size: 0.65rem;
+  padding: 0.4rem 0.5rem;
+  opacity: 0.5;
+}
+
+.reports-breakdown td {
+  padding: 0.5rem 0.5rem;
+  border-bottom: 1px solid #2a2a2a;
+  font-size: 0.85rem;
+}
+
+.reports-breakdown tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.reports-breakdown tbody tr:hover {
+  background-color: transparent;
+}
+
 /* ============================================= */
 /* ============================================= */
 /* Profile */
@@ -1522,5 +1639,31 @@ h1.heading-xl {
   /* End session inline */
   .end-session-inline {
     flex-wrap: wrap;
+  }
+
+  /* Active session card */
+  .active-session__actions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .active-session__actions input {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .active-session__pnl,
+  .active-session__projected {
+    flex: 1;
+  }
+
+  /* Notes column hidden on mobile — shown in card row via data-label */
+  .td--notes {
+    max-width: 100%;
+  }
+
+  /* Reports breakdown stacks on mobile */
+  .reports-breakdowns {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FaPencilAlt, FaTrashAlt, FaCopy, FaSyncAlt, FaFlagCheckered, FaPlus } from 'react-icons/fa'
+import { FaPencilAlt, FaTrashAlt, FaCopy, FaSyncAlt, FaFlagCheckered, FaPlus, FaChevronDown, FaChevronUp } from 'react-icons/fa'
 import { format, startOfDay, startOfWeek, startOfMonth, startOfYear } from 'date-fns'
 import toast from 'react-hot-toast'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts'
@@ -11,6 +11,7 @@ import { useBankrollContext } from '../context/BankrollContext'
 // Components
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
+import ConfirmModal from '../components/ConfirmModal'
 
 const yesGifs = Object.values(import.meta.glob('../assets/NumGenGifs/yes*.gif', { eager: true, query: '?url', import: 'default' }))
 const noGifs = Object.values(import.meta.glob('../assets/NumGenGifs/no*.gif', { eager: true, query: '?url', import: 'default' }))
@@ -37,6 +38,9 @@ const Dashboard = () => {
   const [dateFilter, setDateFilter] = useState('week')
   const [rngResult, setRngResult] = useState(null)
   const [rngGif, setRngGif] = useState(null)
+  const [now, setNow] = useState(Date.now())
+  const [historyOpen, setHistoryOpen] = useState(true)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const rollDecision = useCallback(() => {
     const roll = Math.floor(Math.random() * 100) + 1
@@ -56,6 +60,12 @@ const Dashboard = () => {
   }, [])
 
   const activeSessions = useMemo(() => sessions.filter(s => !s.end), [sessions])
+
+  useEffect(() => {
+    if (!activeSessions.length) return
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [activeSessions.length])
 
   const completedSessions = useMemo(() => {
     const done = sessions.filter(s => !!s.end)
@@ -158,12 +168,12 @@ const Dashboard = () => {
 
   const handleDelete = useCallback(
     async id => {
-      if (!window.confirm('Delete this session?')) return
       const res = await deleteSession(id)
       if (res) {
         setSessions(prev => prev.filter(s => s._id !== id))
         await refetchTransactions()
       }
+      setDeleteTarget(null)
     },
     [deleteSession, refetchTransactions]
   )
@@ -370,7 +380,7 @@ const Dashboard = () => {
                     <FaPencilAlt className='btn--icon' />
                   </Link>
                   <button
-                    onClick={() => handleDelete(session._id)}
+                    onClick={() => setDeleteTarget(session._id)}
                     className='btn btn--subtle'
                     title='Delete'
                     aria-label={`Delete ${session.name}`}>
@@ -381,6 +391,17 @@ const Dashboard = () => {
               <div className='active-session__info'>
                 <span>
                   <strong>${session.buyin}</strong> buy-in · {session.start ? format(new Date(session.start), 'h:mm a') : '—'}
+                  {session.start && (() => {
+                    const ms = now - new Date(session.start)
+                    const h = Math.floor(ms / 3600000)
+                    const m = Math.floor((ms % 3600000) / 60000)
+                    const s = Math.floor((ms % 60000) / 1000)
+                    return (
+                      <span className='active-session__timer'>
+                        {h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`}
+                      </span>
+                    )
+                  })()}
                 </span>
                 {session.type === 'Cash' && (
                   rebuyOpen[session._id] ? (
@@ -481,72 +502,90 @@ const Dashboard = () => {
         <p className='no-active'>No active sessions.</p>
       )}
 
-      <div
-        className='active-sessions-header'
-        style={{ marginTop: '2rem' }}>
+      <div className='active-sessions-header' style={{ marginTop: '2rem' }}>
         <h2>History</h2>
+        <button
+          className='btn btn--subtle'
+          onClick={() => setHistoryOpen(o => !o)}
+          aria-label={historyOpen ? 'Collapse history' : 'Expand history'}>
+          {historyOpen ? <FaChevronUp className='btn--icon' /> : <FaChevronDown className='btn--icon' />}
+        </button>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th scope='col'>Name</th>
-            <th scope='col'>Venue</th>
-            <th scope='col'>Type</th>
-            <th scope='col'>Game</th>
-            <th scope='col'>Buy-in</th>
-            <th scope='col'>Cash-out</th>
-            <th scope='col'>Profit</th>
-            <th scope='col'>Date</th>
-            <th scope='col'>Manage</th>
-          </tr>
-        </thead>
-        <tbody>
-          {completedSessions.length ? (
-            completedSessions.map(session => (
-              <tr key={session._id}>
-                <td data-label='Name'>{session.name}</td>
-                <td data-label='Venue'>{session.venue}</td>
-                <td data-label='Type'>{session.type}</td>
-                <td data-label='Game'>{session.game}</td>
-                <td data-label='Buy-in'>${session.buyin}</td>
-                <td data-label='Cash-out'>${session.cashout}</td>
-                <td
-                  data-label='Profit'
-                  style={{ color: session.cashout - session.buyin >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                  ${(session.cashout - session.buyin).toFixed(2)}
-                </td>
-                <td data-label='Date'>{session.start ? format(new Date(session.start), 'MM/dd/yy') : '—'}</td>
-                <td data-label='Manage'>
-                  <button
-                    onClick={() => navigate('/sessions/new', { state: { prefill: session } })}
-                    className='btn btn--subtle'
-                    title='Duplicate'
-                    aria-label={`Duplicate ${session.name}`}>
-                    <FaCopy className='btn--icon' />
-                  </button>
-                  <Link
-                    to={`/sessions/${session._id}/edit`}
-                    className='btn btn--subtle'
-                    aria-label={`Edit ${session.name}`}>
-                    <FaPencilAlt className='btn--icon' />
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(session._id)}
-                    className='btn btn--subtle'
-                    aria-label={`Delete ${session.name}`}>
-                    <FaTrashAlt className='btn--icon--danger' />
-                  </button>
-                </td>
-              </tr>
-            ))
-          ) : (
+      {historyOpen && (
+        <table>
+          <thead>
             <tr>
-              <td colSpan={9}>No completed sessions.</td>
+              <th scope='col'>Name</th>
+              <th scope='col'>Venue</th>
+              <th scope='col'>Type</th>
+              <th scope='col'>Game</th>
+              <th scope='col'>Buy-in</th>
+              <th scope='col'>Cash-out</th>
+              <th scope='col'>Profit</th>
+              <th scope='col'>Date</th>
+              <th scope='col'>Notes</th>
+              <th scope='col'>Manage</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {completedSessions.length ? (
+              completedSessions.map(session => (
+                <tr key={session._id}>
+                  <td data-label='Name'>{session.name}</td>
+                  <td data-label='Venue'>{session.venue}</td>
+                  <td data-label='Type'>{session.type}</td>
+                  <td data-label='Game'>{session.game}</td>
+                  <td data-label='Buy-in'>${session.buyin}</td>
+                  <td data-label='Cash-out'>${session.cashout}</td>
+                  <td
+                    data-label='Profit'
+                    style={{ color: session.cashout - session.buyin >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                    ${(session.cashout - session.buyin).toFixed(2)}
+                  </td>
+                  <td data-label='Date'>{session.start ? format(new Date(session.start), 'MM/dd/yy') : '—'}</td>
+                  <td data-label='Notes' className='td--notes'>
+                    {session.notes ? <span title={session.notes}>{session.notes.length > 30 ? session.notes.slice(0, 30) + '…' : session.notes}</span> : <span style={{ opacity: 0.3 }}>—</span>}
+                  </td>
+                  <td data-label='Manage'>
+                    <button
+                      onClick={() => navigate('/sessions/new', { state: { prefill: session } })}
+                      className='btn btn--subtle'
+                      title='Duplicate'
+                      aria-label={`Duplicate ${session.name}`}>
+                      <FaCopy className='btn--icon' />
+                    </button>
+                    <Link
+                      to={`/sessions/${session._id}/edit`}
+                      className='btn btn--subtle'
+                      aria-label={`Edit ${session.name}`}>
+                      <FaPencilAlt className='btn--icon' />
+                    </Link>
+                    <button
+                      onClick={() => setDeleteTarget(session._id)}
+                      className='btn btn--subtle'
+                      aria-label={`Delete ${session.name}`}>
+                      <FaTrashAlt className='btn--icon--danger' />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={10}>No completed sessions.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          message='Delete this session? This cannot be undone.'
+          onConfirm={() => handleDelete(deleteTarget)}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </>
   )
 }

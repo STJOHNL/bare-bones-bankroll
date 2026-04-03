@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
-import { FaTachometerAlt, FaWallet, FaUser, FaShieldAlt, FaSignOutAlt } from 'react-icons/fa'
+import { FaTachometerAlt, FaWallet, FaUser, FaShieldAlt, FaSignOutAlt, FaChartBar } from 'react-icons/fa'
 // Context
 import { useUserContext } from '../../context/UserContext'
 import { useBankrollContext } from '../../context/BankrollContext'
@@ -39,6 +39,10 @@ const NavbarPrivate = () => {
         <NavLink to='/bankroll' className='nav__item'>
           <FaWallet />
           <span>Bankroll</span>
+        </NavLink>
+        <NavLink to='/reports' className='nav__item'>
+          <FaChartBar />
+          <span>Reports</span>
         </NavLink>
         <NavLink to={`/profile/${user?._id}`} className='nav__item'>
           <FaUser />
