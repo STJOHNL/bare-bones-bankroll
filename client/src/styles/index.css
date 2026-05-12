@@ -1070,6 +1070,246 @@ h1.heading-xl {
 }
 
 /* ============================================= */
+/* Randomizer — RNG Panel                        */
+/* ============================================= */
+
+.rng-panel {
+  background-color: var(--alt-background);
+  border: 1px solid #3a3a3a;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  min-height: 14rem;
+}
+
+.rng-panel__left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem 2.5rem;
+  flex: 1;
+}
+
+.rng-panel__label {
+  font-size: 0.72rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.4;
+  margin: 0;
+}
+
+.rng-panel__roll-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 0.6rem 2.5rem;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.rng-panel__roll-btn:hover {
+  opacity: 0.85;
+}
+
+.rng-panel__roll-btn--rolling {
+  opacity: 0.5;
+  transform: scale(0.97);
+  cursor: default;
+}
+
+.rng-panel__verdict {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.rng-panel__number {
+  font-size: 3.75rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rng-panel__tag {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.rng-panel__right {
+  width: 16rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e1e1e;
+  border-left: 1px solid #3a3a3a;
+  overflow: hidden;
+}
+
+.rng-panel__gif {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rng-panel__placeholder {
+  font-size: 4rem;
+  opacity: 0.07;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  user-select: none;
+}
+
+/* ============================================= */
+/* Randomizer — Player Notes                     */
+/* ============================================= */
+
+.player-notes__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.player-notes__search {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.player-notes__search input {
+  width: 100%;
+  padding-left: 2.25rem;
+}
+
+.player-notes__search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.35;
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+.player-notes__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 0.75rem;
+}
+
+.player-notes__empty {
+  opacity: 0.4;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.player-note {
+  background-color: var(--alt-background);
+  border: 1px solid #3a3a3a;
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.player-note--form {
+  border-left: 3px solid var(--primary);
+  margin-bottom: 1rem;
+  grid-column: 1 / -1;
+}
+
+.player-note input,
+.player-note textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.player-note__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.player-note__name {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.player-note__manage {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.player-note:hover .player-note__manage {
+  opacity: 1;
+}
+
+.player-note__text {
+  font-size: 0.83rem;
+  line-height: 1.65;
+  opacity: 0.75;
+  white-space: pre-wrap;
+  flex: 1;
+}
+
+.player-note__date {
+  font-size: 0.7rem;
+  opacity: 0.3;
+  margin-top: 0.25rem;
+}
+
+.player-note__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .rng-panel {
+    flex-direction: column;
+    min-height: unset;
+  }
+
+  .rng-panel__right {
+    width: 100%;
+    height: 12rem;
+    border-left: none;
+    border-top: 1px solid #3a3a3a;
+  }
+
+  .player-notes__list {
+    grid-template-columns: 1fr;
+  }
+
+  .player-note__manage {
+    opacity: 1;
+  }
+}
+
+/* ============================================= */
 /* ============================================= */
 /* Profile */
 /* ============================================= */

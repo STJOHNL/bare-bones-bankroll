@@ -26,6 +26,7 @@ import NewSession from './pages/NewSession'
 import EditSession from './pages/EditSession'
 import Bankroll from './pages/Bankroll'
 import Reports from './pages/Reports'
+import Randomizer from './pages/Randomizer'
 import SupportTickets from './pages/SupportTickets'
 import EditSupportTicket from './pages/EditSupportTicket'
 
@@ -124,6 +125,14 @@ const router = createBrowserRouter(
           element={
             <PrivateRoute>
               <Reports />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='randomizer'
+          element={
+            <PrivateRoute>
+              <Randomizer />
             </PrivateRoute>
           }
         />

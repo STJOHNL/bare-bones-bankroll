@@ -23,6 +23,7 @@ import userRoutes from './routes/user.js'
 import supportRoutes from './routes/support.js'
 import sessionRoutes from './routes/session.js'
 import transactionRoutes from './routes/transaction.js'
+import playerNoteRoutes from './routes/playerNote.js'
 
 // Connect to MongoDB
 connectDB()
@@ -73,6 +74,7 @@ app.use('/api/user', userRoutes)
 app.use('/api/support', supportRoutes)
 app.use('/api/session', sessionRoutes)
 app.use('/api/transaction', transactionRoutes)
+app.use('/api/player-notes', playerNoteRoutes)
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../client/dist')))
