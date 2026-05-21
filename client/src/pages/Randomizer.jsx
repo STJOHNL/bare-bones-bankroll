@@ -31,6 +31,22 @@ const Randomizer = () => {
     }, 350)
   }, [])
 
+  // ── Pot odds ─────────────────────────────────────────────────────────────
+  const [pot, setPot] = useState('')
+  const [bet, setBet] = useState('')
+  const [outs, setOuts] = useState('')
+
+  const potOddsCalc = (() => {
+    const p = parseFloat(pot)
+    const b = parseFloat(bet)
+    const o = parseInt(outs)
+    if (!p || !b) return null
+    const potOdds = (b / (p + b * 2)) * 100
+    const turnEquity = o > 0 ? o * 2 : null
+    const flopEquity = o > 0 ? Math.min(o * 4, 100) : null
+    return { potOdds, turnEquity, flopEquity }
+  })()
+
   // ── Player notes ─────────────────────────────────────────────────────────
   const [notes, setNotes] = useState([])
   const [isLoading, setIsLoading] = useState(false)
@@ -128,6 +144,73 @@ const Randomizer = () => {
             : <div className='rng-panel__placeholder'>?</div>
           }
         </div>
+      </div>
+
+      {/* ── Pot Odds ─────────────────────────────────────────────── */}
+      <div className='pot-odds'>
+        <p className='pot-odds__title'>Pot Odds Calculator</p>
+        <div className='pot-odds__inputs'>
+          <div className='pot-odds__field'>
+            <label>Pot</label>
+            <div className='pot-odds__input-wrap'>
+              <span>$</span>
+              <input type='number' value={pot} onChange={e => setPot(e.target.value)} placeholder='0' min='0' step='0.01' />
+            </div>
+          </div>
+          <div className='pot-odds__field'>
+            <label>Bet</label>
+            <div className='pot-odds__input-wrap'>
+              <span>$</span>
+              <input type='number' value={bet} onChange={e => setBet(e.target.value)} placeholder='0' min='0' step='0.01' />
+            </div>
+          </div>
+          <div className='pot-odds__field'>
+            <label>Outs</label>
+            <input type='number' value={outs} onChange={e => setOuts(e.target.value)} placeholder='0' min='0' max='47' step='1' />
+          </div>
+        </div>
+
+        {potOddsCalc && (
+          <div className='pot-odds__results'>
+            <div className='pot-odds__result'>
+              <span className='pot-odds__result-label'>Pot Odds</span>
+              <span className='pot-odds__result-value'>{potOddsCalc.potOdds.toFixed(1)}%</span>
+              <span className='pot-odds__result-hint'>equity needed to break even</span>
+            </div>
+
+            {potOddsCalc.turnEquity !== null && (
+              <div className='pot-odds__result'>
+                <span className='pot-odds__result-label'>Turn (1 card)</span>
+                <span
+                  className='pot-odds__result-value'
+                  style={{ color: potOddsCalc.turnEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)' }}>
+                  {potOddsCalc.turnEquity}%
+                </span>
+                <span
+                  className='pot-odds__result-verdict'
+                  style={{ color: potOddsCalc.turnEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)' }}>
+                  {potOddsCalc.turnEquity >= potOddsCalc.potOdds ? 'Call' : 'Fold'}
+                </span>
+              </div>
+            )}
+
+            {potOddsCalc.flopEquity !== null && (
+              <div className='pot-odds__result'>
+                <span className='pot-odds__result-label'>Flop (2 cards)</span>
+                <span
+                  className='pot-odds__result-value'
+                  style={{ color: potOddsCalc.flopEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)' }}>
+                  {potOddsCalc.flopEquity}%
+                </span>
+                <span
+                  className='pot-odds__result-verdict'
+                  style={{ color: potOddsCalc.flopEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)' }}>
+                  {potOddsCalc.flopEquity >= potOddsCalc.potOdds ? 'Call' : 'Fold'}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Player Notes ─────────────────────────────────────────── */}

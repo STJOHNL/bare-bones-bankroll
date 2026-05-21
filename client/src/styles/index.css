@@ -1177,6 +1177,114 @@ h1.heading-xl {
 }
 
 /* ============================================= */
+/* Randomizer — Pot Odds Calculator              */
+/* ============================================= */
+
+.pot-odds {
+  background-color: var(--alt-background);
+  border: 1px solid #3a3a3a;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.pot-odds__title {
+  font-size: 0.72rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.4;
+  margin-bottom: 1rem;
+}
+
+.pot-odds__inputs {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pot-odds__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 7rem;
+}
+
+.pot-odds__field label {
+  font-size: 0.72rem;
+  letter-spacing: 0.5px;
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+
+.pot-odds__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pot-odds__input-wrap span {
+  position: absolute;
+  left: 0.65rem;
+  font-size: 0.85rem;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.pot-odds__input-wrap input {
+  padding-left: 1.5rem;
+  width: 100%;
+}
+
+.pot-odds__field > input {
+  width: 100%;
+}
+
+.pot-odds__results {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #2e2e2e;
+  flex-wrap: wrap;
+}
+
+.pot-odds__result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 8rem;
+}
+
+.pot-odds__result-label {
+  font-size: 0.7rem;
+  opacity: 0.45;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.pot-odds__result-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.pot-odds__result-hint {
+  font-size: 0.7rem;
+  opacity: 0.35;
+}
+
+.pot-odds__result-verdict {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ============================================= */
 /* Randomizer — Player Notes                     */
 /* ============================================= */
 
