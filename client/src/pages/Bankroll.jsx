@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { FaTrashAlt } from 'react-icons/fa'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -9,6 +9,8 @@ import { useBankrollContext } from '../context/BankrollContext'
 // Components
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
+
+const PAGE_SIZE = 20
 
 const Bankroll = () => {
   const { createTransaction, deleteTransaction } = useBankroll()
@@ -24,6 +26,7 @@ const Bankroll = () => {
   const [filterType, setFilterType] = useState('All')
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
+  const [page, setPage] = useState(1)
 
   const handleSubmit = async e => {
     e.preventDefault()
@@ -64,14 +67,22 @@ const Bankroll = () => {
 
   const profit = cashouts + promos - buyins
 
-  const filteredTransactions = [...transactions]
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .filter(t => {
-      if (filterType !== 'All' && t.type !== filterType) return false
-      if (filterFrom && new Date(t.date) < new Date(filterFrom)) return false
-      if (filterTo && new Date(t.date) > new Date(filterTo + 'T23:59:59')) return false
-      return true
-    })
+  const filteredTransactions = useMemo(
+    () =>
+      [...transactions]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .filter(t => {
+          if (filterType !== 'All' && t.type !== filterType) return false
+          if (filterFrom && new Date(t.date) < new Date(filterFrom)) return false
+          if (filterTo && new Date(t.date) > new Date(filterTo + 'T23:59:59')) return false
+          return true
+        }),
+    [transactions, filterType, filterFrom, filterTo]
+  )
+
+  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pagedTransactions = filteredTransactions.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   if (isLoading) return <Loader />
 
@@ -155,7 +166,7 @@ const Bankroll = () => {
           <select
             id='filterType'
             value={filterType}
-            onChange={e => setFilterType(e.target.value)}>
+            onChange={e => { setFilterType(e.target.value); setPage(1) }}>
             <option value='All'>All</option>
             <option value='Deposit'>Deposit</option>
             <option value='Withdrawal'>Withdrawal</option>
@@ -170,7 +181,7 @@ const Bankroll = () => {
             type='date'
             id='filterFrom'
             value={filterFrom}
-            onChange={e => setFilterFrom(e.target.value)}
+            onChange={e => { setFilterFrom(e.target.value); setPage(1) }}
           />
         </div>
         <div>
@@ -179,7 +190,7 @@ const Bankroll = () => {
             type='date'
             id='filterTo'
             value={filterTo}
-            onChange={e => setFilterTo(e.target.value)}
+            onChange={e => { setFilterTo(e.target.value); setPage(1) }}
           />
         </div>
         {(filterType !== 'All' || filterFrom || filterTo) && (
@@ -189,6 +200,7 @@ const Bankroll = () => {
               setFilterType('All')
               setFilterFrom('')
               setFilterTo('')
+              setPage(1)
             }}>
             Clear
           </button>
@@ -207,8 +219,8 @@ const Bankroll = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredTransactions.length ? (
-              filteredTransactions.map(t => (
+            {pagedTransactions.length ? (
+              pagedTransactions.map(t => (
                 <tr key={t._id}>
                   <td data-label='Type'>{t.type}</td>
                   <td data-label='Amount' className={['Deposit', 'Cash-out', 'Promo'].includes(t.type) ? 'amount--pos' : 'amount--neg'}>${t.amount.toFixed(2)}</td>
@@ -231,6 +243,23 @@ const Bankroll = () => {
           </tbody>
         </table>
       </div>
+      {totalPages > 1 && (
+        <div className='pagination'>
+          <button
+            className='btn btn--subtle'
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={safePage === 1}>
+            ‹ Prev
+          </button>
+          <span>{safePage} / {totalPages}</span>
+          <button
+            className='btn btn--subtle'
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}>
+            Next ›
+          </button>
+        </div>
+      )}
     </>
   )
 }

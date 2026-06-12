@@ -2015,3 +2015,18 @@ h1.heading-xl {
     grid-template-columns: 1fr;
   }
 }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pagination button:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}

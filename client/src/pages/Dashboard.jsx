@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FaPencilAlt, FaTrashAlt, FaCopy, FaSyncAlt, FaFlagCheckered, FaPlus, FaChevronDown, FaChevronUp } from 'react-icons/fa'
+import { FaPencilAlt, FaTrashAlt, FaCopy, FaSyncAlt, FaFlagCheckered, FaPlus, FaChevronDown, FaChevronUp, FaDownload } from 'react-icons/fa'
 import { format, startOfDay, startOfWeek, startOfMonth, startOfYear } from 'date-fns'
 import toast from 'react-hot-toast'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts'
@@ -24,6 +24,8 @@ const DATE_FILTERS = [
   { label: 'All Time', value: 'alltime' }
 ]
 
+const PAGE_SIZE = 20
+
 const Dashboard = () => {
   const navigate = useNavigate()
   const { getSessions, deleteSession, updateSession } = useSession()
@@ -41,6 +43,7 @@ const Dashboard = () => {
   const [now, setNow] = useState(Date.now())
   const [historyOpen, setHistoryOpen] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [page, setPage] = useState(1)
 
   const rollDecision = useCallback(() => {
     const roll = Math.floor(Math.random() * 100) + 1
@@ -233,6 +236,28 @@ const Dashboard = () => {
     [cashoutValues, updateSession, refetchTransactions]
   )
 
+  const exportCsv = useCallback(() => {
+    const headers = ['Name', 'Venue', 'Type', 'Game', 'Buy-in', 'Cash-out', 'Profit', 'Date', 'Duration (hrs)', 'Notes']
+    const rows = completedSessions.map(s => {
+      const profit = ((s.cashout ?? 0) - s.buyin).toFixed(2)
+      const durationHrs = s.start && s.end ? ((new Date(s.end) - new Date(s.start)) / 3600000).toFixed(2) : ''
+      const escapedNotes = s.notes ? `"${s.notes.replace(/"/g, '""')}"` : ''
+      return [s.name, s.venue, s.type, s.game, s.buyin, s.cashout ?? 0, profit, s.start ? format(new Date(s.start), 'yyyy-MM-dd') : '', durationHrs, escapedNotes].join(',')
+    })
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `sessions-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [completedSessions])
+
+  const totalPages = Math.max(1, Math.ceil(completedSessions.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pagedSessions = completedSessions.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
   if (isLoading) return <Loader />
 
   return (
@@ -244,7 +269,7 @@ const Dashboard = () => {
         {DATE_FILTERS.map(f => (
           <button
             key={f.value}
-            onClick={() => setDateFilter(f.value)}
+            onClick={() => { setDateFilter(f.value); setPage(1) }}
             className={`date-filter__btn${dateFilter === f.value ? ' date-filter__btn--active' : ''}`}>
             {f.label}
           </button>
@@ -504,15 +529,27 @@ const Dashboard = () => {
 
       <div className='active-sessions-header' style={{ marginTop: '2rem' }}>
         <h2>History</h2>
-        <button
-          className='btn btn--subtle'
-          onClick={() => setHistoryOpen(o => !o)}
-          aria-label={historyOpen ? 'Collapse history' : 'Expand history'}>
-          {historyOpen ? <FaChevronUp className='btn--icon' /> : <FaChevronDown className='btn--icon' />}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {completedSessions.length > 0 && (
+            <button
+              className='btn btn--subtle'
+              onClick={exportCsv}
+              title='Export CSV'
+              aria-label='Export sessions as CSV'>
+              <FaDownload className='btn--icon' />
+            </button>
+          )}
+          <button
+            className='btn btn--subtle'
+            onClick={() => setHistoryOpen(o => !o)}
+            aria-label={historyOpen ? 'Collapse history' : 'Expand history'}>
+            {historyOpen ? <FaChevronUp className='btn--icon' /> : <FaChevronDown className='btn--icon' />}
+          </button>
+        </div>
       </div>
 
       {historyOpen && (
+        <>
         <table>
           <thead>
             <tr>
@@ -529,8 +566,8 @@ const Dashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {completedSessions.length ? (
-              completedSessions.map(session => (
+            {pagedSessions.length ? (
+              pagedSessions.map(session => (
                 <tr key={session._id}>
                   <td data-label='Name'>{session.name}</td>
                   <td data-label='Venue'>{session.venue}</td>
@@ -577,6 +614,24 @@ const Dashboard = () => {
             )}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div className='pagination'>
+            <button
+              className='btn btn--subtle'
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={safePage === 1}>
+              ‹ Prev
+            </button>
+            <span>{safePage} / {totalPages}</span>
+            <button
+              className='btn btn--subtle'
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}>
+              Next ›
+            </button>
+          </div>
+        )}
+        </>
       )}
 
       {deleteTarget && (
