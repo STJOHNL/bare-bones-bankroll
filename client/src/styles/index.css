@@ -285,6 +285,32 @@ nav {
   opacity: 1 !important;
 }
 
+.nav__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-left: 0.75rem;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--light);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+.nav__toggle:hover,
+.nav__toggle:focus-visible {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.nav__toggle svg {
+  font-size: 1rem;
+}
+
 .nav__balance {
   font-size: 1.2rem;
   font-weight: 700;
@@ -836,7 +862,7 @@ h1.heading-xl {
   gap: 0.5rem;
 }
 
-.active-session__top > div:first-child {
+.active-session__top>div:first-child {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -1236,7 +1262,7 @@ h1.heading-xl {
   width: 100%;
 }
 
-.pot-odds__field > input {
+.pot-odds__field>input {
   width: 100%;
 }
 
@@ -1282,6 +1308,69 @@ h1.heading-xl {
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
+}
+
+.randomizer-reference {
+  background-color: var(--alt-background);
+  border: 1px solid #3a3a3a;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.randomizer-reference__title {
+  font-size: 0.72rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.5;
+  margin-bottom: 1rem;
+}
+
+.randomizer-reference table {
+  margin-top: 0;
+}
+
+.randomizer-reference td,
+.randomizer-reference th {
+  padding: 0.75rem 0.85rem;
+}
+
+.randomizer-reference tbody tr:hover {
+  background-color: transparent;
+}
+
+.randomizer-reference--saved-hands {
+  margin-top: 1rem;
+}
+
+.randomizer-reference__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.saved-hand-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.saved-hand-form input,
+.saved-hand-form textarea {
+  width: 100%;
+}
+
+.saved-hands-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.saved-hand .player-note__top {
+  align-items: center;
 }
 
 /* ============================================= */

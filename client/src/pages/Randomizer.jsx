@@ -6,9 +6,27 @@ import PageTitle from '../components/PageTitle'
 import ConfirmModal from '../components/ConfirmModal'
 import Loader from '../components/Loader'
 import { usePlayerNote } from '../hooks/usePlayerNote'
+import {
+  createSavedHand,
+  loadSavedHands,
+  saveSavedHands,
+  SAVED_HANDS_STORAGE_KEY,
+} from '../utils/randomizerSavedHands'
 
-const yesGifs = Object.values(import.meta.glob('../assets/NumGenGifs/yes*.gif', { eager: true, query: '?url', import: 'default' }))
-const noGifs = Object.values(import.meta.glob('../assets/NumGenGifs/no*.gif', { eager: true, query: '?url', import: 'default' }))
+const yesGifs = Object.values(
+  import.meta.glob('../assets/NumGenGifs/yes*.gif', {
+    eager: true,
+    query: '?url',
+    import: 'default',
+  })
+)
+const noGifs = Object.values(
+  import.meta.glob('../assets/NumGenGifs/no*.gif', {
+    eager: true,
+    query: '?url',
+    import: 'default',
+  })
+)
 
 const Randomizer = () => {
   const { getPlayerNotes, createPlayerNote, updatePlayerNote, deletePlayerNote } = usePlayerNote()
@@ -60,6 +78,13 @@ const Randomizer = () => {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [saving, setSaving] = useState(false)
 
+  // ── Saved hands ─────────────────────────────────────────────────────
+  const [savedHands, setSavedHands] = useState([])
+  const [showSaveForm, setShowSaveForm] = useState(false)
+  const [saveTitle, setSaveTitle] = useState('')
+  const [saveNotes, setSaveNotes] = useState('')
+  const [saveDetails, setSaveDetails] = useState('')
+
   useEffect(() => {
     const fetch = async () => {
       setIsLoading(true)
@@ -92,7 +117,10 @@ const Randomizer = () => {
 
   const handleSaveEdit = async () => {
     setSaving(true)
-    const updated = await updatePlayerNote(editId, { name: editName.trim(), notes: editNote.trim() })
+    const updated = await updatePlayerNote(editId, {
+      name: editName.trim(),
+      notes: editNote.trim(),
+    })
     if (updated) {
       setNotes(prev => prev.map(n => (n._id === editId ? updated : n)))
       setEditId(null)
@@ -114,97 +142,170 @@ const Randomizer = () => {
     ? notes.filter(n => n.name.toLowerCase().includes(search.trim().toLowerCase()))
     : notes
 
+  useEffect(() => {
+    setSavedHands(loadSavedHands())
+  }, [])
+
+  useEffect(() => {
+    saveSavedHands(savedHands)
+  }, [savedHands])
+
   const isAggressive = rngResult !== null && rngResult >= 50
+
+  const handleSaveHand = () => {
+    if (!saveTitle.trim() && !saveNotes.trim() && !saveDetails.trim()) return
+
+    const newHand = createSavedHand({
+      title: saveTitle,
+      notes: saveNotes,
+      details: saveDetails,
+    })
+
+    setSavedHands(prev => [newHand, ...prev])
+    setSaveTitle('')
+    setSaveNotes('')
+    setSaveDetails('')
+    setShowSaveForm(false)
+    toast.success('Hand saved for review')
+  }
+
+  const handleDeleteSavedHand = id => {
+    setSavedHands(prev => prev.filter(hand => hand.id !== id))
+    toast.success('Saved hand removed')
+  }
 
   return (
     <>
-      <PageTitle title='Randomizer' />
+      <PageTitle title="Randomizer" />
 
       {/* ── RNG ─────────────────────────────────────────────────── */}
-      <div className='rng-panel'>
-        <div className='rng-panel__left'>
-          <p className='rng-panel__label'>Play Decision</p>
+      <div className="rng-panel">
+        <div className="rng-panel__left">
+          <p className="rng-panel__label">Play Decision</p>
           <button
             className={`rng-panel__roll-btn${rolling ? ' rng-panel__roll-btn--rolling' : ''}`}
             onClick={roll}
-            disabled={rolling}>
+            disabled={rolling}
+          >
             Roll
           </button>
           {rngResult !== null && (
-            <div className='rng-panel__verdict' style={{ color: isAggressive ? 'var(--green)' : 'var(--red)' }}>
-              <span className='rng-panel__number'>{rngResult}</span>
-              <span className='rng-panel__tag'>{isAggressive ? 'Aggressive' : 'Passive'}</span>
+            <div
+              className="rng-panel__verdict"
+              style={{ color: isAggressive ? 'var(--green)' : 'var(--red)' }}
+            >
+              <span className="rng-panel__number">{rngResult}</span>
+              <span className="rng-panel__tag">{isAggressive ? 'Aggressive' : 'Passive'}</span>
             </div>
           )}
         </div>
 
-        <div className='rng-panel__right'>
-          {rngGif
-            ? <img src={rngGif} alt='' className='rng-panel__gif' />
-            : <div className='rng-panel__placeholder'>?</div>
-          }
+        <div className="rng-panel__right">
+          {rngGif ? (
+            <img src={rngGif} alt="" className="rng-panel__gif" />
+          ) : (
+            <div className="rng-panel__placeholder">?</div>
+          )}
         </div>
       </div>
 
       {/* ── Pot Odds ─────────────────────────────────────────────── */}
-      <div className='pot-odds'>
-        <p className='pot-odds__title'>Pot Odds Calculator</p>
-        <div className='pot-odds__inputs'>
-          <div className='pot-odds__field'>
+      <div className="pot-odds">
+        <p className="pot-odds__title">Pot Odds Calculator</p>
+        <div className="pot-odds__inputs">
+          <div className="pot-odds__field">
             <label>Pot</label>
-            <div className='pot-odds__input-wrap'>
+            <div className="pot-odds__input-wrap">
               <span>$</span>
-              <input type='number' value={pot} onChange={e => setPot(e.target.value)} placeholder='0' min='0' step='0.01' />
+              <input
+                type="number"
+                value={pot}
+                onChange={e => setPot(e.target.value)}
+                placeholder="0"
+                min="0"
+                step="0.01"
+              />
             </div>
           </div>
-          <div className='pot-odds__field'>
+          <div className="pot-odds__field">
             <label>Bet</label>
-            <div className='pot-odds__input-wrap'>
+            <div className="pot-odds__input-wrap">
               <span>$</span>
-              <input type='number' value={bet} onChange={e => setBet(e.target.value)} placeholder='0' min='0' step='0.01' />
+              <input
+                type="number"
+                value={bet}
+                onChange={e => setBet(e.target.value)}
+                placeholder="0"
+                min="0"
+                step="0.01"
+              />
             </div>
           </div>
-          <div className='pot-odds__field'>
+          <div className="pot-odds__field">
             <label>Outs</label>
-            <input type='number' value={outs} onChange={e => setOuts(e.target.value)} placeholder='0' min='0' max='47' step='1' />
+            <input
+              type="number"
+              value={outs}
+              onChange={e => setOuts(e.target.value)}
+              placeholder="0"
+              min="0"
+              max="47"
+              step="1"
+            />
           </div>
         </div>
 
         {potOddsCalc && (
-          <div className='pot-odds__results'>
-            <div className='pot-odds__result'>
-              <span className='pot-odds__result-label'>Pot Odds</span>
-              <span className='pot-odds__result-value'>{potOddsCalc.potOdds.toFixed(1)}%</span>
-              <span className='pot-odds__result-hint'>equity needed to break even</span>
+          <div className="pot-odds__results">
+            <div className="pot-odds__result">
+              <span className="pot-odds__result-label">Pot Odds</span>
+              <span className="pot-odds__result-value">{potOddsCalc.potOdds.toFixed(1)}%</span>
+              <span className="pot-odds__result-hint">equity needed to break even</span>
             </div>
 
             {potOddsCalc.turnEquity !== null && (
-              <div className='pot-odds__result'>
-                <span className='pot-odds__result-label'>Turn (1 card)</span>
+              <div className="pot-odds__result">
+                <span className="pot-odds__result-label">Turn (1 card)</span>
                 <span
-                  className='pot-odds__result-value'
-                  style={{ color: potOddsCalc.turnEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)' }}>
+                  className="pot-odds__result-value"
+                  style={{
+                    color:
+                      potOddsCalc.turnEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)',
+                  }}
+                >
                   {potOddsCalc.turnEquity}%
                 </span>
                 <span
-                  className='pot-odds__result-verdict'
-                  style={{ color: potOddsCalc.turnEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)' }}>
+                  className="pot-odds__result-verdict"
+                  style={{
+                    color:
+                      potOddsCalc.turnEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)',
+                  }}
+                >
                   {potOddsCalc.turnEquity >= potOddsCalc.potOdds ? 'Call' : 'Fold'}
                 </span>
               </div>
             )}
 
             {potOddsCalc.flopEquity !== null && (
-              <div className='pot-odds__result'>
-                <span className='pot-odds__result-label'>Flop (2 cards)</span>
+              <div className="pot-odds__result">
+                <span className="pot-odds__result-label">Flop (2 cards)</span>
                 <span
-                  className='pot-odds__result-value'
-                  style={{ color: potOddsCalc.flopEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)' }}>
+                  className="pot-odds__result-value"
+                  style={{
+                    color:
+                      potOddsCalc.flopEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)',
+                  }}
+                >
                   {potOddsCalc.flopEquity}%
                 </span>
                 <span
-                  className='pot-odds__result-verdict'
-                  style={{ color: potOddsCalc.flopEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)' }}>
+                  className="pot-odds__result-verdict"
+                  style={{
+                    color:
+                      potOddsCalc.flopEquity >= potOddsCalc.potOdds ? 'var(--green)' : 'var(--red)',
+                  }}
+                >
                   {potOddsCalc.flopEquity >= potOddsCalc.potOdds ? 'Call' : 'Fold'}
                 </span>
               </div>
@@ -213,48 +314,215 @@ const Randomizer = () => {
         )}
       </div>
 
+      <div className="randomizer-reference">
+        <p className="randomizer-reference__title">Common Preflop Odds</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Match-up</th>
+              <th>Approximate Equity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pocket pair vs same rank + lower card (e.g. 66 vs 65)</td>
+              <td>~85%</td>
+            </tr>
+            <tr>
+              <td>Pocket pair vs two lower cards (e.g. 66 vs 54)</td>
+              <td>~80%</td>
+            </tr>
+            <tr>
+              <td>Pocket pair vs lower pocket pair (e.g. 66 vs 44)</td>
+              <td>~82%</td>
+            </tr>
+            <tr>
+              <td>Pocket pair vs same rank + higher card (e.g. 66 vs K6)</td>
+              <td>~80%</td>
+            </tr>
+            <tr>
+              <td>Pocket pair vs one higher card and one lower card (e.g. 66 vs K4)</td>
+              <td>~74%</td>
+            </tr>
+            <tr>
+              <td>Pocket pair vs two higher cards (e.g. 66 vs AK)</td>
+              <td>~56%</td>
+            </tr>
+            <tr>
+              <td>Same high card / higher second card (e.g. K9 vs KJ)</td>
+              <td>~24%</td>
+            </tr>
+            <tr>
+              <td>Two overcards vs pocket pair (e.g. AK vs 66)</td>
+              <td>~44%</td>
+            </tr>
+            <tr>
+              <td>One overcard / one card in-between vs pocket pair (e.g. K9 vs 66)</td>
+              <td>~30%</td>
+            </tr>
+            <tr>
+              <td>One overcard vs pocket pair (e.g. K5 vs 66)</td>
+              <td>~29%</td>
+            </tr>
+            <tr>
+              <td>Connectors vs two lower cards (e.g. 76s vs 54s)</td>
+              <td>~48%</td>
+            </tr>
+            <tr>
+              <td>Connectors vs one overcard (e.g. 76s vs K4)</td>
+              <td>~38%</td>
+            </tr>
+            <tr>
+              <td>Connectors vs two overcards (e.g. 76s vs AK)</td>
+              <td>~30%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="randomizer-reference">
+        <p className="randomizer-reference__title">Common Draw Odds</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Draw Type</th>
+              <th>Approximate Equity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Flush draw with two cards to go</td>
+              <td>~35%</td>
+            </tr>
+            <tr>
+              <td>Flush draw + gutshot with two cards to go</td>
+              <td>~24%</td>
+            </tr>
+            <tr>
+              <td>Flush draw with one card to come</td>
+              <td>~19%</td>
+            </tr>
+            <tr>
+              <td>Open-ended straight draw with one card to come</td>
+              <td>~17%</td>
+            </tr>
+            <tr>
+              <td>Gutshot with one card to come</td>
+              <td>~11%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="randomizer-reference randomizer-reference--saved-hands">
+        <div className="randomizer-reference__header">
+          <p className="randomizer-reference__title">Saved Hands</p>
+          <button className="btn btn--primary" onClick={() => setShowSaveForm(prev => !prev)}>
+            {showSaveForm ? 'Cancel' : 'Save Hand'}
+          </button>
+        </div>
+
+        {showSaveForm && (
+          <div className="saved-hand-form">
+            <input
+              type="text"
+              placeholder="Hand title"
+              value={saveTitle}
+              onChange={e => setSaveTitle(e.target.value)}
+            />
+            <textarea
+              placeholder="What happened in this hand?"
+              value={saveNotes}
+              onChange={e => setSaveNotes(e.target.value)}
+              rows={3}
+            />
+            <textarea
+              placeholder="Optional details (board, action, reads)"
+              value={saveDetails}
+              onChange={e => setSaveDetails(e.target.value)}
+              rows={3}
+            />
+            <button className="btn btn--primary" onClick={handleSaveHand}>
+              Save for Review
+            </button>
+          </div>
+        )}
+
+        {savedHands.length === 0 ? (
+          <p className="player-notes__empty">No saved hands yet.</p>
+        ) : (
+          <div className="saved-hands-list">
+            {savedHands.map(hand => (
+              <div className="player-note saved-hand" key={hand.id}>
+                <div className="player-note__top">
+                  <span className="player-note__name">{hand.title}</span>
+                  <button
+                    className="btn btn--subtle"
+                    onClick={() => handleDeleteSavedHand(hand.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+                {hand.notes && <p className="player-note__text">{hand.notes}</p>}
+                {hand.details && <p className="player-note__text">{hand.details}</p>}
+                <span className="player-note__date">
+                  {format(new Date(hand.createdAt), 'MMM d, yyyy · h:mm a')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ── Player Notes ─────────────────────────────────────────── */}
-      <div className='player-notes'>
-        <div className='player-notes__header'>
+      <div className="player-notes">
+        <div className="player-notes__header">
           <h2>Player Notes</h2>
           <button
-            className='btn btn--primary'
-            onClick={() => { setAddOpen(o => !o); setNewName(''); setNewNote('') }}>
+            className="btn btn--primary"
+            onClick={() => {
+              setAddOpen(o => !o)
+              setNewName('')
+              setNewNote('')
+            }}
+          >
             <FaPlus /> Add
           </button>
         </div>
 
         {addOpen && (
-          <div className='player-note player-note--form'>
+          <div className="player-note player-note--form">
             <input
-              type='text'
-              placeholder='Player name or screen name'
+              type="text"
+              placeholder="Player name or screen name"
               value={newName}
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               autoFocus
             />
             <textarea
-              placeholder='Notes about this player...'
+              placeholder="Notes about this player..."
               value={newNote}
               onChange={e => setNewNote(e.target.value)}
               rows={3}
             />
-            <div className='player-note__actions'>
-              <button className='btn btn--primary' onClick={handleAdd} disabled={saving}>
+            <div className="player-note__actions">
+              <button className="btn btn--primary" onClick={handleAdd} disabled={saving}>
                 {saving ? 'Saving…' : 'Save'}
               </button>
-              <button className='btn btn--subtle' onClick={() => setAddOpen(false)}>Cancel</button>
+              <button className="btn btn--subtle" onClick={() => setAddOpen(false)}>
+                Cancel
+              </button>
             </div>
           </div>
         )}
 
         {notes.length > 1 && (
-          <div className='player-notes__search'>
-            <FaSearch className='player-notes__search-icon' />
+          <div className="player-notes__search">
+            <FaSearch className="player-notes__search-icon" />
             <input
-              type='text'
-              placeholder='Search players…'
+              type="text"
+              placeholder="Search players…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -264,17 +532,17 @@ const Randomizer = () => {
         {isLoading ? (
           <Loader />
         ) : filtered.length === 0 && !addOpen ? (
-          <p className='player-notes__empty'>
+          <p className="player-notes__empty">
             {notes.length === 0 ? 'No player notes yet.' : 'No results.'}
           </p>
         ) : (
-          <div className='player-notes__list'>
+          <div className="player-notes__list">
             {filtered.map(n => (
-              <div className='player-note' key={n._id}>
+              <div className="player-note" key={n._id}>
                 {editId === n._id ? (
                   <>
                     <input
-                      type='text'
+                      type="text"
                       value={editName}
                       onChange={e => setEditName(e.target.value)}
                       autoFocus
@@ -284,28 +552,42 @@ const Randomizer = () => {
                       onChange={e => setEditNote(e.target.value)}
                       rows={4}
                     />
-                    <div className='player-note__actions'>
-                      <button className='btn btn--primary' onClick={handleSaveEdit} disabled={saving}>
+                    <div className="player-note__actions">
+                      <button
+                        className="btn btn--primary"
+                        onClick={handleSaveEdit}
+                        disabled={saving}
+                      >
                         {saving ? 'Saving…' : 'Save'}
                       </button>
-                      <button className='btn btn--subtle' onClick={() => setEditId(null)}>Cancel</button>
+                      <button className="btn btn--subtle" onClick={() => setEditId(null)}>
+                        Cancel
+                      </button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className='player-note__top'>
-                      <span className='player-note__name'>{n.name}</span>
-                      <div className='player-note__manage'>
-                        <button className='btn btn--subtle' onClick={() => handleEdit(n)} aria-label='Edit'>
-                          <FaPencilAlt className='btn--icon' />
+                    <div className="player-note__top">
+                      <span className="player-note__name">{n.name}</span>
+                      <div className="player-note__manage">
+                        <button
+                          className="btn btn--subtle"
+                          onClick={() => handleEdit(n)}
+                          aria-label="Edit"
+                        >
+                          <FaPencilAlt className="btn--icon" />
                         </button>
-                        <button className='btn btn--subtle' onClick={() => setDeleteTarget(n._id)} aria-label='Delete'>
-                          <FaTrashAlt className='btn--icon--danger' />
+                        <button
+                          className="btn btn--subtle"
+                          onClick={() => setDeleteTarget(n._id)}
+                          aria-label="Delete"
+                        >
+                          <FaTrashAlt className="btn--icon--danger" />
                         </button>
                       </div>
                     </div>
-                    {n.notes && <p className='player-note__text'>{n.notes}</p>}
-                    <span className='player-note__date'>
+                    {n.notes && <p className="player-note__text">{n.notes}</p>}
+                    <span className="player-note__date">
                       {format(new Date(n.updatedAt), 'MMM d, yyyy · h:mm a')}
                     </span>
                   </>
@@ -318,7 +600,7 @@ const Randomizer = () => {
 
       {deleteTarget && (
         <ConfirmModal
-          message='Delete this player note?'
+          message="Delete this player note?"
           onConfirm={() => handleDelete(deleteTarget)}
           onCancel={() => setDeleteTarget(null)}
         />
