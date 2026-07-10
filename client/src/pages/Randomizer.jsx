@@ -54,6 +54,13 @@ const Randomizer = () => {
   const [bet, setBet] = useState('')
   const [outs, setOuts] = useState('')
 
+  // ── Chip Stack Calculator ─────────────────────────────────────────────────
+  const [chipEntries, setChipEntries] = useState('')
+  const [chipStartStack, setChipStartStack] = useState('')
+  const [chipTarget, setChipTarget] = useState('')
+  const [chipCurrentPlayers, setChipCurrentPlayers] = useState('')
+  const [chipCurrentStack, setChipCurrentStack] = useState('')
+
   const potOddsCalc = (() => {
     const p = parseFloat(pot)
     const b = parseFloat(bet)
@@ -63,6 +70,28 @@ const Randomizer = () => {
     const turnEquity = o > 0 ? o * 2 : null
     const flopEquity = o > 0 ? Math.min(o * 4, 100) : null
     return { potOdds, turnEquity, flopEquity }
+  })()
+
+  const chipCalc = (() => {
+    const entries = parseInt(chipEntries)
+    const start = parseInt(chipStartStack)
+    const target = parseInt(chipTarget)
+    if (!entries || !start || !target || target >= entries) return null
+    const total = entries * start
+    const avgAtTarget = Math.round(total / target)
+    const currentPlayers = parseInt(chipCurrentPlayers) || null
+    const myStack = chipCurrentStack !== '' ? parseInt(chipCurrentStack) : null
+    const currentAvg = currentPlayers && currentPlayers < entries ? Math.round(total / currentPlayers) : null
+    const gap = myStack !== null ? avgAtTarget - myStack : null
+    return {
+      total,
+      avgAtTarget,
+      comfortable: Math.round(avgAtTarget * 2),
+      danger: Math.round(avgAtTarget * 0.5),
+      currentAvg,
+      myStack,
+      gap,
+    }
   })()
 
   // ── Player notes ─────────────────────────────────────────────────────────
@@ -311,6 +340,162 @@ const Randomizer = () => {
               </div>
             )}
           </div>
+        )}
+      </div>
+
+      {/* ── Chip Stack Calculator ────────────────────────────────── */}
+      <div className="chip-calc">
+        <p className="chip-calc__title">Chip Stack Calculator</p>
+
+        <div className="chip-calc__inputs">
+          <div className="chip-calc__field">
+            <label>Total Entries</label>
+            <input
+              type="number"
+              value={chipEntries}
+              onChange={e => setChipEntries(e.target.value)}
+              placeholder="100"
+              min="2"
+              step="1"
+            />
+          </div>
+          <div className="chip-calc__field">
+            <label>Starting Stack</label>
+            <input
+              type="number"
+              value={chipStartStack}
+              onChange={e => setChipStartStack(e.target.value)}
+              placeholder="10000"
+              min="1"
+              step="1"
+            />
+          </div>
+          <div className="chip-calc__field">
+            <label>Target Players Left</label>
+            <input
+              type="number"
+              value={chipTarget}
+              onChange={e => setChipTarget(e.target.value)}
+              placeholder="9"
+              min="1"
+              step="1"
+            />
+          </div>
+        </div>
+
+        <div className="chip-calc__inputs" style={{ marginTop: '0.75rem' }}>
+          <div className="chip-calc__field">
+            <label>
+              Current Players Left{' '}
+              <span className="chip-calc__optional-label">(optional)</span>
+            </label>
+            <input
+              type="number"
+              value={chipCurrentPlayers}
+              onChange={e => setChipCurrentPlayers(e.target.value)}
+              placeholder="—"
+              min="1"
+              step="1"
+            />
+          </div>
+          <div className="chip-calc__field">
+            <label>
+              Your Stack{' '}
+              <span className="chip-calc__optional-label">(optional)</span>
+            </label>
+            <input
+              type="number"
+              value={chipCurrentStack}
+              onChange={e => setChipCurrentStack(e.target.value)}
+              placeholder="—"
+              min="0"
+              step="1"
+            />
+          </div>
+        </div>
+
+        {chipCalc && (
+          <>
+            <hr className="chip-calc__divider" />
+            <p className="chip-calc__total">
+              Total chips in play:{' '}
+              <strong>{chipCalc.total.toLocaleString()}</strong>
+            </p>
+            <div className="chip-calc__results">
+              <div className="chip-calc__result">
+                <span className="chip-calc__result-label">
+                  Average at {chipTarget} left
+                </span>
+                <span className="chip-calc__result-value">
+                  {chipCalc.avgAtTarget.toLocaleString()}
+                </span>
+                <span className="chip-calc__result-hint">target average stack</span>
+              </div>
+              <div className="chip-calc__result">
+                <span className="chip-calc__result-label">Comfortable</span>
+                <span
+                  className="chip-calc__result-value"
+                  style={{ color: 'var(--green)' }}>
+                  {chipCalc.comfortable.toLocaleString()}
+                </span>
+                <span className="chip-calc__result-hint">~2× average</span>
+              </div>
+              <div className="chip-calc__result">
+                <span className="chip-calc__result-label">Danger Zone</span>
+                <span
+                  className="chip-calc__result-value"
+                  style={{ color: 'var(--red)' }}>
+                  {chipCalc.danger.toLocaleString()}
+                </span>
+                <span className="chip-calc__result-hint">≤ 0.5× average</span>
+              </div>
+            </div>
+
+            {(chipCalc.currentAvg !== null || chipCalc.myStack !== null) && (
+              <div className="chip-calc__meta">
+                {chipCalc.currentAvg !== null && (
+                  <span className="chip-calc__meta-item">
+                    Current avg:{' '}
+                    <strong>{chipCalc.currentAvg.toLocaleString()}</strong>
+                  </span>
+                )}
+                {chipCalc.myStack !== null && chipCalc.currentAvg !== null && (
+                  <span className="chip-calc__meta-item">
+                    You vs current avg:{' '}
+                    <strong
+                      style={{
+                        color:
+                          chipCalc.myStack >= chipCalc.currentAvg
+                            ? 'var(--green)'
+                            : 'var(--red)',
+                      }}>
+                      {chipCalc.myStack >= chipCalc.currentAvg ? '+' : ''}
+                      {(chipCalc.myStack - chipCalc.currentAvg).toLocaleString()}
+                    </strong>
+                  </span>
+                )}
+                {chipCalc.gap !== null && (
+                  <span className="chip-calc__meta-item">
+                    {chipCalc.gap > 0 ? (
+                      <>
+                        Chips needed to reach target avg:{' '}
+                        <strong style={{ color: 'var(--red)' }}>
+                          +{chipCalc.gap.toLocaleString()}
+                        </strong>
+                      </>
+                    ) : (
+                      <>
+                        Surplus above target avg:{' '}
+                        <strong style={{ color: 'var(--green)' }}>
+                          +{Math.abs(chipCalc.gap).toLocaleString()}
+                        </strong>
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 

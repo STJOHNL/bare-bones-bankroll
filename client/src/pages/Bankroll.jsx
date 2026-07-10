@@ -9,6 +9,7 @@ import { useBankrollContext } from '../context/BankrollContext'
 // Components
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
+import ConfirmModal from '../components/ConfirmModal'
 
 const PAGE_SIZE = 20
 
@@ -27,6 +28,7 @@ const Bankroll = () => {
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
   const [page, setPage] = useState(1)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const handleSubmit = async e => {
     e.preventDefault()
@@ -49,11 +51,11 @@ const Bankroll = () => {
   }
 
   const handleDelete = async id => {
-    if (!window.confirm('Delete this transaction?')) return
     const res = await deleteTransaction(id)
     if (res) {
       setTransactions(prev => prev.filter(t => t._id !== id))
     }
+    setDeleteTarget(null)
   }
 
   const deposits = transactions.filter(t => t.type === 'Deposit').reduce((sum, t) => sum + t.amount, 0)
@@ -228,8 +230,9 @@ const Bankroll = () => {
                   <td data-label='Date'>{t.date ? format(new Date(t.date), 'MM/dd/yy') : '—'}</td>
                   <td data-label='Manage'>
                     <button
-                      onClick={() => handleDelete(t._id)}
-                      className='btn btn--subtle'>
+                      onClick={() => setDeleteTarget(t._id)}
+                      className='btn btn--subtle'
+                      aria-label='Delete transaction'>
                       <FaTrashAlt className='btn--icon--danger' />
                     </button>
                   </td>
@@ -237,7 +240,9 @@ const Bankroll = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={5}>No transactions found.</td>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', opacity: 0.4 }}>
+                  {transactions.length === 0 ? 'No transactions yet. Add a deposit to get started.' : 'No transactions match your filters.'}
+                </td>
               </tr>
             )}
           </tbody>
@@ -259,6 +264,14 @@ const Bankroll = () => {
             Next ›
           </button>
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          message='Delete this transaction? This cannot be undone.'
+          onConfirm={() => handleDelete(deleteTarget)}
+          onCancel={() => setDeleteTarget(null)}
+        />
       )}
     </>
   )

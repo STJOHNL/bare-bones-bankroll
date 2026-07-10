@@ -524,7 +524,10 @@ const Dashboard = () => {
           ))}
         </div>
       ) : (
-        <p className='no-active'>No active sessions.</p>
+        <div className='empty-state'>
+          <span className='empty-state__title'>No active sessions</span>
+          <Link to='/sessions/new' className='btn btn--primary'>+ Start a Session</Link>
+        </div>
       )}
 
       <div className='active-sessions-header' style={{ marginTop: '2rem' }}>
@@ -566,7 +569,7 @@ const Dashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {pagedSessions.length ? (
+            {pagedSessions.length > 0 ? (
               pagedSessions.map(session => (
                 <tr key={session._id}>
                   <td data-label='Name'>{session.name}</td>
@@ -609,7 +612,9 @@ const Dashboard = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={10}>No completed sessions.</td>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '2rem', opacity: 0.4 }}>
+                  {dateFilter === 'alltime' ? 'No sessions recorded yet.' : 'No sessions for this period.'}
+                </td>
               </tr>
             )}
           </tbody>

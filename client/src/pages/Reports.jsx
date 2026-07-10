@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts'
 import { useSession } from '../hooks/useSession'
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
@@ -111,6 +112,20 @@ const Reports = () => {
     return { best: sorted.slice(0, 3), worst: sorted.slice(-3).reverse() }
   }, [completed])
 
+  // ── P/L chart data ───────────────────────────────────────────────────────
+  const plChartData = useMemo(() => {
+    let cumulative = 0
+    return [...completed]
+      .sort((a, b) => new Date(a.start) - new Date(b.start))
+      .map(s => {
+        cumulative += (s.cashout ?? 0) - s.buyin
+        return {
+          date: s.start ? format(new Date(s.start), 'MM/dd') : '',
+          pl: parseFloat(cumulative.toFixed(2)),
+        }
+      })
+  }, [completed])
+
   if (isLoading) return <Loader />
 
   return (
@@ -119,9 +134,39 @@ const Reports = () => {
       <h1 style={{ marginBottom: '1.5rem' }}>Reports</h1>
 
       {completed.length === 0 ? (
-        <p style={{ opacity: 0.5 }}>No completed sessions yet.</p>
+        <div className='empty-state'>
+          <span className='empty-state__title'>No data yet</span>
+          <span className='empty-state__desc'>Complete some sessions to see your reports here.</span>
+        </div>
       ) : (
         <>
+          {/* P/L Trend Chart */}
+          {plChartData.length > 1 && (
+            <div className='pl-chart' style={{ marginBottom: '2rem' }}>
+              <p className='pl-chart__title'>Cumulative P/L</p>
+              <ResponsiveContainer width='100%' height={220}>
+                <LineChart data={plChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                  <XAxis dataKey='date' tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tickFormatter={v => `$${v}`} tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} tickLine={false} axisLine={false} width={60} />
+                  <Tooltip
+                    contentStyle={{ background: 'var(--alt-background)', border: '1px solid #3a3a3a', borderRadius: 'var(--radius)', fontSize: '0.85rem' }}
+                    labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+                    formatter={v => [`$${v.toFixed(2)}`, 'P/L']}
+                  />
+                  <ReferenceLine y={0} stroke='rgba(255,255,255,0.15)' strokeDasharray='4 4' />
+                  <Line
+                    type='monotone'
+                    dataKey='pl'
+                    stroke={plChartData[plChartData.length - 1]?.pl >= 0 ? 'var(--green)' : 'var(--red)'}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
           {/* Summary Stats */}
           <div className='stats' style={{ marginBottom: '2rem' }}>
             {[

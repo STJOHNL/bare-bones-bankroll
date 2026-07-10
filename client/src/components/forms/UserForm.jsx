@@ -8,6 +8,7 @@ import { useUser } from '../../hooks/useUser'
 const UserForm = ({ onSubmitCallback, parentData, buttonText }) => {
   const { user, setUser } = useUserContext()
   const { createUser, updateUser } = useUser()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Form data
   const [fName, setFName] = useState(parentData?.fName || '')
@@ -16,6 +17,7 @@ const UserForm = ({ onSubmitCallback, parentData, buttonText }) => {
 
   const handleSubmit = async e => {
     e.preventDefault()
+    setIsSubmitting(true)
 
     const formData = {
       updatingUserId: user?._id,
@@ -42,8 +44,9 @@ const UserForm = ({ onSubmitCallback, parentData, buttonText }) => {
       }
     }
 
+    setIsSubmitting(false)
+
     if (onSubmitCallback) {
-      // Callback to update the parent component
       onSubmitCallback(res)
     }
   }
@@ -82,7 +85,10 @@ const UserForm = ({ onSubmitCallback, parentData, buttonText }) => {
         required
       />
 
-      <button type='submit'>{buttonText}</button>
+      <button type='submit' disabled={isSubmitting} className={isSubmitting ? 'is-loading' : ''}>
+        {isSubmitting && <span className='btn-spinner' aria-hidden='true' />}
+        {isSubmitting ? 'Saving…' : buttonText}
+      </button>
     </form>
   )
 }

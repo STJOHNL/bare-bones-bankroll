@@ -10,6 +10,7 @@ const SupportForm = ({ onSubmitCallback, parentData, buttonText, showStatus }) =
   const { user } = useUserContext()
   const { createSupportTicket, updateSupportTicket } = useSupport()
   const navigate = useNavigate()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Form data
   const [category, setCategory] = useState(parentData?.category || '')
@@ -18,6 +19,7 @@ const SupportForm = ({ onSubmitCallback, parentData, buttonText, showStatus }) =
 
   const handleSubmit = async e => {
     e.preventDefault()
+    setIsSubmitting(true)
 
     const formData = {
       id: parentData?._id || '',
@@ -43,8 +45,9 @@ const SupportForm = ({ onSubmitCallback, parentData, buttonText, showStatus }) =
       }
     }
 
+    setIsSubmitting(false)
+
     if (onSubmitCallback) {
-      // Callback to update the parent component
       onSubmitCallback(res)
     }
   }
@@ -89,7 +92,10 @@ const SupportForm = ({ onSubmitCallback, parentData, buttonText, showStatus }) =
         </>
       )}
 
-      <button type='submit'>{buttonText}</button>
+      <button type='submit' disabled={isSubmitting} className={isSubmitting ? 'is-loading' : ''}>
+        {isSubmitting && <span className='btn-spinner' aria-hidden='true' />}
+        {isSubmitting ? 'Saving…' : buttonText}
+      </button>
     </form>
   )
 }

@@ -17,6 +17,7 @@ import { useUserContext } from '../../context/UserContext'
 import { useBankrollContext } from '../../context/BankrollContext'
 // Custom hooks
 import { useAuth } from '../../hooks/useAuth'
+import ConfirmModal from '../ConfirmModal'
 
 const NavbarPrivate = () => {
   const navigate = useNavigate()
@@ -24,6 +25,7 @@ const NavbarPrivate = () => {
   const { signOut } = useAuth()
   const { balance } = useBankrollContext()
   const [isBalanceHidden, setIsBalanceHidden] = useState(false)
+  const [showSignOutModal, setShowSignOutModal] = useState(false)
 
   useEffect(() => {
     const storedValue = localStorage.getItem('bankrollHidden')
@@ -31,13 +33,10 @@ const NavbarPrivate = () => {
   }, [])
 
   const handleSignOut = async () => {
-    const userConfirmed = window.confirm('Are you sure you want to log out?')
     try {
-      if (userConfirmed) {
-        toast.success('See you later!')
-        await signOut()
-        navigate('/sign-in')
-      }
+      toast.success('See you later!')
+      await signOut()
+      navigate('/sign-in')
     } catch (error) {
       console.log(error)
     }
@@ -102,11 +101,20 @@ const NavbarPrivate = () => {
             <span>Admin</span>
           </NavLink>
         )}
-        <button className="nav__item nav__logout" onClick={handleSignOut}>
+        <button className="nav__item nav__logout" onClick={() => setShowSignOutModal(true)}>
           <FaSignOutAlt />
           <span>Log out</span>
         </button>
       </div>
+
+      {showSignOutModal && (
+        <ConfirmModal
+          message='Are you sure you want to log out?'
+          onConfirm={handleSignOut}
+          onCancel={() => setShowSignOutModal(false)}
+          confirmLabel='Log out'
+        />
+      )}
     </nav>
   )
 }

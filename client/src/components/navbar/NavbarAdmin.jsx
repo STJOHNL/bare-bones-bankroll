@@ -1,21 +1,21 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { FaUsers, FaTicketAlt, FaArrowLeft, FaSignOutAlt } from 'react-icons/fa'
 // Custom hooks
 import { useAuth } from '../../hooks/useAuth'
+import ConfirmModal from '../ConfirmModal'
 
 const NavbarAdmin = () => {
   const navigate = useNavigate()
   const { signOut } = useAuth()
+  const [showSignOutModal, setShowSignOutModal] = useState(false)
 
   const handleSignOut = async () => {
-    const userConfirmed = window.confirm('Are you sure you want to log out?')
     try {
-      if (userConfirmed) {
-        toast.success('See you later!')
-        await signOut()
-        navigate('/sign-in')
-      }
+      toast.success('See you later!')
+      await signOut()
+      navigate('/sign-in')
     } catch (error) {
       console.log(error)
     }
@@ -39,11 +39,20 @@ const NavbarAdmin = () => {
           <FaArrowLeft />
           <span>App</span>
         </NavLink>
-        <button className='nav__item nav__logout' onClick={handleSignOut}>
+        <button className='nav__item nav__logout' onClick={() => setShowSignOutModal(true)}>
           <FaSignOutAlt />
           <span>Log out</span>
         </button>
       </div>
+
+      {showSignOutModal && (
+        <ConfirmModal
+          message='Are you sure you want to log out?'
+          onConfirm={handleSignOut}
+          onCancel={() => setShowSignOutModal(false)}
+          confirmLabel='Log out'
+        />
+      )}
     </nav>
   )
 }

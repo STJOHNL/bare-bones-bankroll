@@ -12,6 +12,7 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
   const { createTransaction } = useBankroll()
   const { setTransactions, refetchTransactions } = useBankrollContext()
   const navigate = useNavigate()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Convert ISO date string or Date object to datetime-local format
   const getLocalDateTime = date => {
@@ -60,6 +61,7 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
 
   const handleSubmit = async e => {
     e.preventDefault()
+    setIsSubmitting(true)
 
     const formData = {
       id: parentData?._id || '',
@@ -111,8 +113,9 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
       }
     }
 
+    setIsSubmitting(false)
+
     if (onSubmitCallback) {
-      // Callback to update the parent component
       onSubmitCallback(res)
     }
   }
@@ -276,7 +279,10 @@ const CashForm = ({ onSubmitCallback, parentData, prefillData, buttonText, showS
           placeholder='Add any notes about this session...'></textarea>
       </div>
 
-      <button type='submit'>{buttonText}</button>
+      <button type='submit' disabled={isSubmitting} className={isSubmitting ? 'is-loading' : ''}>
+        {isSubmitting && <span className='btn-spinner' aria-hidden='true' />}
+        {isSubmitting ? 'Saving…' : buttonText}
+      </button>
     </form>
   )
 }

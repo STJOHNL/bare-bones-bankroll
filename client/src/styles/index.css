@@ -28,6 +28,15 @@
   --background: #1a1a1a;
   --alt-background: #222222;
 
+  /* Border Colors */
+  --border: #3a3a3a;
+  --border-subtle: #2a2a2a;
+  --border-nav: #2e2e2e;
+
+  /* Surfaces */
+  --surface-input: #252525;
+  --surface-hover: #252525;
+
   /* Box Shadows */
   --shadow: 0px 2px 8px rgba(0, 0, 0, 0.15);
   --inset-shadow: inset 0px 2px 8px rgba(0, 0, 0, 0.15);
@@ -1310,6 +1319,129 @@ h1.heading-xl {
   text-transform: uppercase;
 }
 
+/* ============================================= */
+/* Randomizer — Chip Stack Calculator            */
+/* ============================================= */
+
+.chip-calc {
+  background-color: var(--alt-background);
+  border: 1px solid #3a3a3a;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.chip-calc__title {
+  font-size: 0.72rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.4;
+  margin-bottom: 1rem;
+}
+
+.chip-calc__inputs {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chip-calc__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 7rem;
+}
+
+.chip-calc__field label {
+  font-size: 0.72rem;
+  letter-spacing: 0.5px;
+  opacity: 0.5;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.chip-calc__optional-label {
+  opacity: 0.35;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.chip-calc__divider {
+  border: 0;
+  border-top: 1px solid #2e2e2e;
+  margin: 1.25rem 0;
+}
+
+.chip-calc__total {
+  font-size: 0.72rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.4;
+  margin-bottom: 1rem;
+}
+
+.chip-calc__total strong {
+  color: var(--light);
+  opacity: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip-calc__results {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chip-calc__result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 8rem;
+}
+
+.chip-calc__result-label {
+  font-size: 0.7rem;
+  opacity: 0.45;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.chip-calc__result-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip-calc__result-hint {
+  font-size: 0.7rem;
+  opacity: 0.35;
+}
+
+.chip-calc__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #2e2e2e;
+}
+
+.chip-calc__meta-item {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.chip-calc__meta-item strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================= */
+/* Randomizer — Reference Tables                 */
+/* ============================================= */
+
 .randomizer-reference {
   background-color: var(--alt-background);
   border: 1px solid #3a3a3a;
@@ -2118,4 +2250,56 @@ h1.heading-xl {
 .pagination button:disabled {
   opacity: 0.25;
   cursor: not-allowed;
+}
+
+/* ============================================= */
+/* Empty States                                  */
+/* ============================================= */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+
+.empty-state__title {
+  font-size: 0.9rem;
+  opacity: 0.5;
+  font-weight: 500;
+}
+
+.empty-state__desc {
+  font-size: 0.85rem;
+  opacity: 0.4;
+  max-width: 22rem;
+  line-height: 1.65;
+}
+
+/* ============================================= */
+/* Submit Button Loading State                   */
+/* ============================================= */
+
+button[type='submit'].is-loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
 }
