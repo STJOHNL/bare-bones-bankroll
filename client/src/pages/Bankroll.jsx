@@ -210,7 +210,7 @@ const Bankroll = () => {
       </div>
 
       <div className='table-scroll'>
-        <table>
+        <table className='table--transactions'>
           <thead>
             <tr>
               <th scope='col'>Type</th>

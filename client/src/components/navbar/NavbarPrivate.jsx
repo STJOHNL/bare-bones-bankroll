@@ -11,10 +11,13 @@ import {
   FaDice,
   FaEye,
   FaEyeSlash,
+  FaSun,
+  FaMoon,
 } from 'react-icons/fa'
 // Context
 import { useUserContext } from '../../context/UserContext'
 import { useBankrollContext } from '../../context/BankrollContext'
+import { useThemeContext } from '../../context/ThemeContext'
 // Custom hooks
 import { useAuth } from '../../hooks/useAuth'
 import ConfirmModal from '../ConfirmModal'
@@ -24,6 +27,7 @@ const NavbarPrivate = () => {
   const { user } = useUserContext()
   const { signOut } = useAuth()
   const { balance } = useBankrollContext()
+  const { theme, toggleTheme } = useThemeContext()
   const [isBalanceHidden, setIsBalanceHidden] = useState(false)
   const [showSignOutModal, setShowSignOutModal] = useState(false)
 
@@ -73,6 +77,15 @@ const NavbarPrivate = () => {
         title={isBalanceHidden ? 'Show bankroll' : 'Hide bankroll'}
       >
         {isBalanceHidden ? <FaEye /> : <FaEyeSlash />}
+      </button>
+      <button
+        type="button"
+        className="nav__toggle"
+        onClick={toggleTheme}
+        aria-pressed={theme === 'dark'}
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? <FaSun /> : <FaMoon />}
       </button>
       <div className="nav__links">
         <NavLink to="/dashboard" className="nav__item">

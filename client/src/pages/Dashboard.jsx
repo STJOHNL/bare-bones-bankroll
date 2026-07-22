@@ -317,14 +317,14 @@ const Dashboard = () => {
           <p className='pl-chart__title'>Cumulative P/L</p>
           <ResponsiveContainer width='100%' height={220}>
             <LineChart data={plChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-              <XAxis dataKey='date' tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis tickFormatter={v => `$${v}`} tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} tickLine={false} axisLine={false} width={60} />
+              <XAxis dataKey='date' tick={{ fill: 'rgba(128,128,128,0.7)', fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis tickFormatter={v => `$${v}`} tick={{ fill: 'rgba(128,128,128,0.7)', fontSize: 11 }} tickLine={false} axisLine={false} width={60} />
               <Tooltip
-                contentStyle={{ background: 'var(--alt-background)', border: '1px solid #3a3a3a', borderRadius: 'var(--radius)', fontSize: '0.85rem' }}
-                labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+                contentStyle={{ background: 'var(--alt-background)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.85rem' }}
+                labelStyle={{ color: 'rgba(128,128,128,0.9)' }}
                 formatter={v => [`$${v.toFixed(2)}`, 'P/L']}
               />
-              <ReferenceLine y={0} stroke='rgba(255,255,255,0.15)' strokeDasharray='4 4' />
+              <ReferenceLine y={0} stroke='rgba(128,128,128,0.35)' strokeDasharray='4 4' />
               <Line
                 type='monotone'
                 dataKey='pl'
@@ -553,7 +553,7 @@ const Dashboard = () => {
 
       {historyOpen && (
         <>
-        <table>
+        <table className='table--sessions'>
           <thead>
             <tr>
               <th scope='col'>Name</th>

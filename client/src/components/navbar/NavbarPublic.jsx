@@ -1,10 +1,22 @@
 import { NavLink } from 'react-router-dom'
-import { FaSignInAlt, FaUserPlus } from 'react-icons/fa'
+import { FaSignInAlt, FaUserPlus, FaSun, FaMoon } from 'react-icons/fa'
+import { useThemeContext } from '../../context/ThemeContext'
 
 const NavbarPublic = () => {
+  const { theme, toggleTheme } = useThemeContext()
+
   return (
     <nav>
       <span className='nav__brand'>Bankroll</span>
+      <button
+        type='button'
+        className='nav__toggle'
+        onClick={toggleTheme}
+        aria-pressed={theme === 'dark'}
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? <FaSun /> : <FaMoon />}
+      </button>
       <div className='nav__links'>
         <NavLink to='/sign-in' className='nav__item'>
           <FaSignInAlt />

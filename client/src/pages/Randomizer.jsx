@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { FaPlus, FaPencilAlt, FaTrashAlt, FaSearch } from 'react-icons/fa'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -35,18 +35,36 @@ const Randomizer = () => {
   const [rngResult, setRngResult] = useState(null)
   const [rngGif, setRngGif] = useState(null)
   const [rolling, setRolling] = useState(false)
+  const spinIntervalRef = useRef(null)
+  const spinTimeoutRef = useRef(null)
 
   const roll = useCallback(() => {
     setRolling(true)
-    setRngResult(null)
     setRngGif(null)
-    setTimeout(() => {
+
+    clearInterval(spinIntervalRef.current)
+    clearTimeout(spinTimeoutRef.current)
+
+    // Rapidly cycle the number to give the impression of it spinning/randomizing
+    spinIntervalRef.current = setInterval(() => {
+      setRngResult(Math.floor(Math.random() * 100) + 1)
+    }, 40)
+
+    spinTimeoutRef.current = setTimeout(() => {
+      clearInterval(spinIntervalRef.current)
       const n = Math.floor(Math.random() * 100) + 1
       const pool = n >= 50 ? yesGifs : noGifs
       setRngResult(n)
       setRngGif(pool[Math.floor(Math.random() * pool.length)])
       setRolling(false)
-    }, 350)
+    }, 300)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      clearInterval(spinIntervalRef.current)
+      clearTimeout(spinTimeoutRef.current)
+    }
   }, [])
 
   // ── Pot odds ─────────────────────────────────────────────────────────────
@@ -209,32 +227,28 @@ const Randomizer = () => {
 
       {/* ── RNG ─────────────────────────────────────────────────── */}
       <div className="rng-panel">
-        <div className="rng-panel__left">
-          <p className="rng-panel__label">Play Decision</p>
-          <button
-            className={`rng-panel__roll-btn${rolling ? ' rng-panel__roll-btn--rolling' : ''}`}
-            onClick={roll}
-            disabled={rolling}
-          >
-            Roll
-          </button>
-          {rngResult !== null && (
-            <div
-              className="rng-panel__verdict"
-              style={{ color: isAggressive ? 'var(--green)' : 'var(--red)' }}
-            >
-              <span className="rng-panel__number">{rngResult}</span>
-              <span className="rng-panel__tag">{isAggressive ? 'Aggressive' : 'Passive'}</span>
-            </div>
-          )}
-        </div>
+        <p className="rng-panel__label">Play Decision</p>
+        <button
+          className={`rng-panel__roll-btn${rolling ? ' rng-panel__roll-btn--rolling' : ''}`}
+          onClick={roll}
+          disabled={rolling}
+        >
+          Roll
+        </button>
 
-        <div className="rng-panel__right">
-          {rngGif ? (
-            <img src={rngGif} alt="" className="rng-panel__gif" />
-          ) : (
-            <div className="rng-panel__placeholder">?</div>
-          )}
+        <div className="rng-panel__result">
+          <div className="rng-panel__gif-wrap">
+            {rngGif && <img src={rngGif} alt="" className="rng-panel__gif" />}
+          </div>
+          <div
+            className="rng-panel__verdict"
+            style={{ color: !rolling && rngResult !== null ? (isAggressive ? 'var(--green)' : 'var(--red)') : undefined }}
+          >
+            <span className="rng-panel__number">{rngResult !== null ? rngResult : '—'}</span>
+            <span className="rng-panel__tag">
+              {!rolling && rngResult !== null ? (isAggressive ? 'Aggressive' : 'Passive') : ''}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -497,106 +511,6 @@ const Randomizer = () => {
             )}
           </>
         )}
-      </div>
-
-      <div className="randomizer-reference">
-        <p className="randomizer-reference__title">Common Preflop Odds</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Match-up</th>
-              <th>Approximate Equity</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Pocket pair vs same rank + lower card (e.g. 66 vs 65)</td>
-              <td>~85%</td>
-            </tr>
-            <tr>
-              <td>Pocket pair vs two lower cards (e.g. 66 vs 54)</td>
-              <td>~80%</td>
-            </tr>
-            <tr>
-              <td>Pocket pair vs lower pocket pair (e.g. 66 vs 44)</td>
-              <td>~82%</td>
-            </tr>
-            <tr>
-              <td>Pocket pair vs same rank + higher card (e.g. 66 vs K6)</td>
-              <td>~80%</td>
-            </tr>
-            <tr>
-              <td>Pocket pair vs one higher card and one lower card (e.g. 66 vs K4)</td>
-              <td>~74%</td>
-            </tr>
-            <tr>
-              <td>Pocket pair vs two higher cards (e.g. 66 vs AK)</td>
-              <td>~56%</td>
-            </tr>
-            <tr>
-              <td>Same high card / higher second card (e.g. K9 vs KJ)</td>
-              <td>~24%</td>
-            </tr>
-            <tr>
-              <td>Two overcards vs pocket pair (e.g. AK vs 66)</td>
-              <td>~44%</td>
-            </tr>
-            <tr>
-              <td>One overcard / one card in-between vs pocket pair (e.g. K9 vs 66)</td>
-              <td>~30%</td>
-            </tr>
-            <tr>
-              <td>One overcard vs pocket pair (e.g. K5 vs 66)</td>
-              <td>~29%</td>
-            </tr>
-            <tr>
-              <td>Connectors vs two lower cards (e.g. 76s vs 54s)</td>
-              <td>~48%</td>
-            </tr>
-            <tr>
-              <td>Connectors vs one overcard (e.g. 76s vs K4)</td>
-              <td>~38%</td>
-            </tr>
-            <tr>
-              <td>Connectors vs two overcards (e.g. 76s vs AK)</td>
-              <td>~30%</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div className="randomizer-reference">
-        <p className="randomizer-reference__title">Common Draw Odds</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Draw Type</th>
-              <th>Approximate Equity</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Flush draw with two cards to go</td>
-              <td>~35%</td>
-            </tr>
-            <tr>
-              <td>Flush draw + gutshot with two cards to go</td>
-              <td>~24%</td>
-            </tr>
-            <tr>
-              <td>Flush draw with one card to come</td>
-              <td>~19%</td>
-            </tr>
-            <tr>
-              <td>Open-ended straight draw with one card to come</td>
-              <td>~17%</td>
-            </tr>
-            <tr>
-              <td>Gutshot with one card to come</td>
-              <td>~11%</td>
-            </tr>
-          </tbody>
-        </table>
       </div>
 
       <div className="randomizer-reference randomizer-reference--saved-hands">
