@@ -41,6 +41,7 @@ const Admin = () => {
         <h2>Users</h2>
         <span style={{ fontSize: '0.85rem', opacity: 0.45 }}>{users.length} total</span>
       </div>
+      <div className='table-responsive'>
       <table>
         <thead>
           <tr>
@@ -82,6 +83,7 @@ const Admin = () => {
           )}
         </tbody>
       </table>
+      </div>
     </>
   )
 }

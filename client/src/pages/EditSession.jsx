@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 // Custom Hooks
 import { useSession } from '../hooks/useSession'
 // Components
@@ -10,6 +10,7 @@ import SessionForm from '../components/forms/SessionForm'
 const EditSession = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { getSessionById } = useSession()
 
   const [isLoading, setIsLoading] = useState(false)
@@ -27,7 +28,7 @@ const EditSession = () => {
   }, [])
 
   const handleSubmit = () => {
-    navigate('/dashboard')
+    navigate(location.state?.returnTo || '/dashboard')
   }
 
   if (isLoading) return <Loader />

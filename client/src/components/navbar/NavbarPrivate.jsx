@@ -9,6 +9,7 @@ import {
   FaSignOutAlt,
   FaChartBar,
   FaDice,
+  FaHistory,
   FaEye,
   FaEyeSlash,
   FaSun,
@@ -95,6 +96,10 @@ const NavbarPrivate = () => {
         <NavLink to="/bankroll" className="nav__item">
           <FaWallet />
           <span>Bankroll</span>
+        </NavLink>
+        <NavLink to="/history" className="nav__item">
+          <FaHistory />
+          <span>History</span>
         </NavLink>
         <NavLink to="/reports" className="nav__item">
           <FaChartBar />

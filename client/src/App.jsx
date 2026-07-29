@@ -19,6 +19,7 @@ import SignUp from './pages/SignUp'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
+import History from './pages/History'
 import Profile from './pages/Profile'
 import Admin from './pages/Admin'
 import Support from './pages/Support'
@@ -117,6 +118,14 @@ const router = createBrowserRouter(
           element={
             <PrivateRoute>
               <Bankroll />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='history'
+          element={
+            <PrivateRoute>
+              <History />
             </PrivateRoute>
           }
         />

@@ -11,6 +11,7 @@ const Reports = () => {
   const { getSessions } = useSession()
   const [isLoading, setIsLoading] = useState(false)
   const [sessions, setSessions] = useState([])
+  const [nameFilter, setNameFilter] = useState('')
 
   useEffect(() => {
     const fetch = async () => {
@@ -22,7 +23,19 @@ const Reports = () => {
     fetch()
   }, [])
 
-  const completed = useMemo(() => sessions.filter(s => !!s.end), [sessions])
+  const allCompleted = useMemo(() => sessions.filter(s => !!s.end), [sessions])
+
+  // Distinct tournament names / cash stakes played, for the query datalist
+  const uniqueNames = useMemo(
+    () => Array.from(new Set(allCompleted.map(s => s.name).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [allCompleted]
+  )
+
+  const completed = useMemo(() => {
+    const q = nameFilter.trim().toLowerCase()
+    if (!q) return allCompleted
+    return allCompleted.filter(s => s.name?.toLowerCase().includes(q))
+  }, [allCompleted, nameFilter])
 
   // ── All-time summary ──────────────────────────────────────────────────────
   const summary = useMemo(() => {
@@ -131,15 +144,49 @@ const Reports = () => {
   return (
     <>
       <PageTitle title='Reports' />
-      <h1 style={{ marginBottom: '1.5rem' }}>Reports</h1>
 
-      {completed.length === 0 ? (
+      {allCompleted.length === 0 ? (
         <div className='empty-state'>
           <span className='empty-state__title'>No data yet</span>
           <span className='empty-state__desc'>Complete some sessions to see your reports here.</span>
         </div>
       ) : (
         <>
+          {/* Query by tournament name / cash stake */}
+          <div className='filter-form' style={{ marginBottom: '1.5rem' }}>
+            <div>
+              <label htmlFor='nameFilter'>Stake / Tournament</label>
+              <input
+                list='session-names'
+                type='text'
+                id='nameFilter'
+                value={nameFilter}
+                onChange={e => setNameFilter(e.target.value)}
+                placeholder='e.g. NL50, Sunday Million'
+              />
+              <datalist id='session-names'>
+                {uniqueNames.map(n => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            </div>
+            {nameFilter && (
+              <button
+                type='button'
+                className='btn btn--subtle'
+                onClick={() => setNameFilter('')}>
+                Clear
+              </button>
+            )}
+          </div>
+
+          {completed.length === 0 ? (
+            <div className='empty-state'>
+              <span className='empty-state__title'>No matching sessions</span>
+              <span className='empty-state__desc'>No sessions found for &quot;{nameFilter}&quot;. Try a different stake or tournament name.</span>
+            </div>
+          ) : (
+          <>
           {/* P/L Trend Chart */}
           {plChartData.length > 1 && (
             <div className='pl-chart' style={{ marginBottom: '2rem' }}>
@@ -241,6 +288,7 @@ const Reports = () => {
 
           {/* By Day of Week */}
           <h2 style={{ margin: '2rem 0 0.75rem' }}>By Day of Week</h2>
+          <div className='table-responsive'>
           <table>
             <thead>
               <tr>
@@ -261,9 +309,11 @@ const Reports = () => {
               ))}
             </tbody>
           </table>
+          </div>
 
           {/* Top Sessions */}
           <h2 style={{ margin: '2rem 0 0.75rem' }}>Best Sessions</h2>
+          <div className='table-responsive'>
           <table>
             <thead>
               <tr>
@@ -286,8 +336,10 @@ const Reports = () => {
               ))}
             </tbody>
           </table>
+          </div>
 
           <h2 style={{ margin: '2rem 0 0.75rem' }}>Worst Sessions</h2>
+          <div className='table-responsive'>
           <table>
             <thead>
               <tr>
@@ -310,6 +362,9 @@ const Reports = () => {
               ))}
             </tbody>
           </table>
+          </div>
+          </>
+          )}
         </>
       )}
     </>

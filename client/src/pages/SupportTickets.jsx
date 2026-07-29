@@ -88,6 +88,7 @@ const SupportTickets = () => {
         </div>
       </div>
 
+      <div className='table-responsive'>
       <table>
         <thead>
           <tr>
@@ -129,6 +130,7 @@ const SupportTickets = () => {
           )}
         </tbody>
       </table>
+      </div>
     </>
   )
 }
