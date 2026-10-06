@@ -1593,6 +1593,99 @@ h1.heading-xl {
 }
 
 /* ============================================= */
+/* Randomizer — Ratio to Percentage              */
+/* ============================================= */
+
+.ratio-calc {
+  background-color: var(--alt-background);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow);
+}
+
+.ratio-calc__title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.ratio-calc__inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ratio-calc__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 7rem;
+}
+
+.ratio-calc__field label {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.ratio-calc__field input {
+  width: 100%;
+}
+
+.ratio-calc__separator {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-faint);
+  padding-bottom: 0.6rem;
+}
+
+.ratio-calc__results {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.ratio-calc__result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 8rem;
+}
+
+.ratio-calc__result-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.ratio-calc__result-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ratio-calc__result-hint {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+}
+
+/* ============================================= */
 /* Randomizer — Chip Stack Calculator            */
 /* ============================================= */
 

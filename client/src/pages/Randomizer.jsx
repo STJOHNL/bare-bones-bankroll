@@ -72,6 +72,10 @@ const Randomizer = () => {
   const [bet, setBet] = useState('')
   const [outs, setOuts] = useState('')
 
+  // ── Ratio to Percentage ─────────────────────────────────────────────────
+  const [ratioA, setRatioA] = useState('')
+  const [ratioB, setRatioB] = useState('')
+
   // ── Chip Stack Calculator ─────────────────────────────────────────────────
   const [chipEntries, setChipEntries] = useState('')
   const [chipStartStack, setChipStartStack] = useState('')
@@ -88,6 +92,17 @@ const Randomizer = () => {
     const turnEquity = o > 0 ? o * 2 : null
     const flopEquity = o > 0 ? Math.min(o * 4, 100) : null
     return { potOdds, turnEquity, flopEquity }
+  })()
+
+  const ratioCalc = (() => {
+    const a = parseFloat(ratioA)
+    const b = parseFloat(ratioB)
+    if (!a || !b || a < 0 || b < 0) return null
+    const total = a + b
+    return {
+      percentA: (a / total) * 100,
+      percentB: (b / total) * 100,
+    }
   })()
 
   const chipCalc = (() => {
@@ -353,6 +368,55 @@ const Randomizer = () => {
                 </span>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Ratio to Percentage ──────────────────────────────────── */}
+      <div className="ratio-calc">
+        <p className="ratio-calc__title">Ratio to Percentage</p>
+        <div className="ratio-calc__inputs">
+          <div className="ratio-calc__field">
+            <label>Ratio A</label>
+            <input
+              type="number"
+              value={ratioA}
+              onChange={e => setRatioA(e.target.value)}
+              placeholder="3"
+              min="0"
+              step="1"
+            />
+          </div>
+          <span className="ratio-calc__separator">:</span>
+          <div className="ratio-calc__field">
+            <label>Ratio B</label>
+            <input
+              type="number"
+              value={ratioB}
+              onChange={e => setRatioB(e.target.value)}
+              placeholder="1"
+              min="0"
+              step="1"
+            />
+          </div>
+        </div>
+
+        {ratioCalc && (
+          <div className="ratio-calc__results">
+            <div className="ratio-calc__result">
+              <span className="ratio-calc__result-label">A of Total</span>
+              <span className="ratio-calc__result-value">{ratioCalc.percentA.toFixed(1)}%</span>
+              <span className="ratio-calc__result-hint">
+                {ratioA} in {parseFloat(ratioA) + parseFloat(ratioB)}
+              </span>
+            </div>
+            <div className="ratio-calc__result">
+              <span className="ratio-calc__result-label">B of Total</span>
+              <span className="ratio-calc__result-value">{ratioCalc.percentB.toFixed(1)}%</span>
+              <span className="ratio-calc__result-hint">
+                {ratioB} in {parseFloat(ratioA) + parseFloat(ratioB)}
+              </span>
+            </div>
           </div>
         )}
       </div>
