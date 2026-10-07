@@ -1,9 +1,15 @@
 import User from '../models/User.js'
 import {
   generateToken,
+  clearToken,
   generateResetToken,
+  hashResetToken,
 } from '../middleware/generateToken.js'
 import mailer from '../helpers/mailer.js'
+import logger from '../utils/logger.js'
+
+const RESET_WINDOW_MS = 60 * 60 * 1000 // 1 hour
+const FORGOT_MESSAGE = 'If an account exists for that email, a reset link has been sent.'
 
 export default {
   // @desc Sign in user
@@ -11,20 +17,16 @@ export default {
   // @access PUBLIC
   signIn: async (req, res, next) => {
     try {
-      let { email, password } = req.body
-      email = email.toLowerCase()
+      const { email, password } = req.body
 
-      const user = await User.findOne({ email })
+      const user = await User.findOne({ email }).select('+password')
       if (!user || !(await user.matchPassword(password))) {
         // Use the same message for both cases to avoid user enumeration
         return res.status(401).json({ message: 'Invalid credentials' })
       }
 
-      const userObj = user.toObject()
-      delete userObj.password
-      const token = generateToken(res, userObj)
-
-      return res.status(200).json({ token })
+      generateToken(res, user)
+      return res.status(200).json({ user: user.toSafeObject() })
     } catch (error) {
       next(error)
     }
@@ -35,10 +37,9 @@ export default {
   // @access PUBLIC
   signUp: async (req, res, next) => {
     try {
-      let { fName, lName, email, password } = req.body
-      email = email.toLowerCase()
+      const { fName, lName, email, password } = req.body
 
-      const userExists = await User.findOne({ email })
+      const userExists = await User.exists({ email })
       if (userExists) {
         return res.status(400).json({ message: 'User with that email already exists' })
       }
@@ -50,10 +51,8 @@ export default {
         password, // Password hashing handled by User model pre-save hook
       })
 
-      const userObj = user.toObject()
-      delete userObj.password
-      const token = generateToken(res, userObj)
-      res.status(201).json({ token, userObj })
+      generateToken(res, user)
+      res.status(201).json({ user: user.toSafeObject() })
     } catch (error) {
       next(error)
     }
@@ -64,12 +63,19 @@ export default {
   // @access PUBLIC
   signOut: async (req, res, next) => {
     try {
-      if (!req.cookies?.token) return res.sendStatus(204)
-      res.cookie('token', '', {
-        httpOnly: true,
-        expires: new Date(0),
-      })
-      res.json({ message: 'User signed out' })
+      clearToken(res)
+      res.status(200).json({ message: 'User signed out' })
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  // @desc Get the signed-in user
+  // @route GET /api/auth/me
+  // @access PRIVATE
+  me: async (req, res, next) => {
+    try {
+      res.status(200).json({ user: req.user })
     } catch (error) {
       next(error)
     }
@@ -80,21 +86,30 @@ export default {
   // @access PUBLIC
   forgotPassword: async (req, res, next) => {
     try {
-      const email = req.body.email?.toLowerCase()
-      const user = await User.findOne({ email })
-      if (!user) {
-        return res.status(400).json({ message: 'User with that email does not exist' })
+      const user = await User.findOne({ email: req.body.email })
+
+      // Always respond the same way so the endpoint can't be used to discover accounts
+      if (user) {
+        const resetToken = generateResetToken()
+        await User.updateOne(
+          { _id: user._id },
+          {
+            $set: {
+              resetTokenHash: hashResetToken(resetToken),
+              resetExpires: new Date(Date.now() + RESET_WINDOW_MS),
+            },
+          }
+        )
+
+        const link = `${process.env.CLIENT_URL}/reset-password/${resetToken}`
+        try {
+          await mailer.sendPasswordReset({ recipient: user.email, name: user.fName, link })
+        } catch (error) {
+          logger.error('Error sending password reset email:', error?.response?.body || error)
+        }
       }
 
-      const resetToken = generateResetToken()
-      user.resetToken = resetToken
-      user.resetExpires = Date.now() + 3600000 // 1 hour
-      await user.save()
-
-      const link = `${process.env.CLIENT_URL}/reset-password/${resetToken}`
-      mailer.sendPasswordReset({ recipient: user.email, name: user.fName, link })
-
-      res.status(200).json({ message: 'Email has been sent!' })
+      res.status(200).json({ message: FORGOT_MESSAGE })
     } catch (error) {
       next(error)
     }
@@ -108,8 +123,8 @@ export default {
       const { token, password } = req.body
 
       const user = await User.findOne({
-        resetToken: token,
-        resetExpires: { $gt: Date.now() },
+        resetTokenHash: hashResetToken(token),
+        resetExpires: { $gt: new Date() },
       })
 
       if (!user) {
@@ -117,9 +132,11 @@ export default {
       }
 
       user.password = password
-      user.resetToken = undefined
+      user.resetTokenHash = undefined
       user.resetExpires = undefined
-      await user.save()
+      // Sign out every existing session
+      user.tokenVersion = (user.tokenVersion ?? 0) + 1
+      await user.save({ validateModifiedOnly: true })
 
       res.status(200).json({ message: 'Password updated!' })
     } catch (error) {
@@ -134,8 +151,7 @@ export default {
     try {
       const { currentPassword, newPassword } = req.body
 
-      // Fetch from DB to get the hashed password (JWT payload may be stale)
-      const user = await User.findById(req.user._id)
+      const user = await User.findById(req.user._id).select('+password')
       if (!user) return res.status(404).json({ message: 'User not found' })
 
       const isMatch = await user.matchPassword(currentPassword)
@@ -144,7 +160,10 @@ export default {
       }
 
       user.password = newPassword
-      await user.save()
+      // Sign out every other session, then re-issue a cookie for this one
+      user.tokenVersion = (user.tokenVersion ?? 0) + 1
+      await user.save({ validateModifiedOnly: true })
+      generateToken(res, user)
 
       res.status(200).json({ message: 'Password updated!' })
     } catch (error) {

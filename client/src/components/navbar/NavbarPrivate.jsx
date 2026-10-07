@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
@@ -21,6 +21,8 @@ import { useBankrollContext } from '../../context/BankrollContext'
 import { useThemeContext } from '../../context/ThemeContext'
 // Custom hooks
 import { useAuth } from '../../hooks/useAuth'
+// Utils
+import { formatPL } from '../../utils/money'
 import ConfirmModal from '../ConfirmModal'
 
 const NavbarPrivate = () => {
@@ -29,22 +31,13 @@ const NavbarPrivate = () => {
   const { signOut } = useAuth()
   const { balance } = useBankrollContext()
   const { theme, toggleTheme } = useThemeContext()
-  const [isBalanceHidden, setIsBalanceHidden] = useState(false)
+  const [isBalanceHidden, setIsBalanceHidden] = useState(() => localStorage.getItem('bankrollHidden') === 'true')
   const [showSignOutModal, setShowSignOutModal] = useState(false)
 
-  useEffect(() => {
-    const storedValue = localStorage.getItem('bankrollHidden')
-    setIsBalanceHidden(storedValue === 'true')
-  }, [])
-
   const handleSignOut = async () => {
-    try {
-      toast.success('See you later!')
-      await signOut()
-      navigate('/sign-in')
-    } catch (error) {
-      console.log(error)
-    }
+    await signOut()
+    toast.success('See you later!')
+    navigate('/sign-in')
   }
 
   const toggleBalanceVisibility = () => {
@@ -55,7 +48,7 @@ const NavbarPrivate = () => {
     })
   }
 
-  const balanceDisplay = isBalanceHidden ? '••••' : `$${balance.toFixed(2)}`
+  const balanceDisplay = isBalanceHidden ? '••••' : formatPL(balance)
   const balanceColor = isBalanceHidden
     ? 'var(--light)'
     : balance >= 0

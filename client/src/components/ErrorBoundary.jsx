@@ -1,26 +1,23 @@
 import { Component } from 'react'
-import { Link } from 'react-router-dom'
+import logger from '../utils/logger'
 
 /**
  * Catches unhandled JavaScript errors anywhere in the component tree below it.
  * Without this, a runtime error in any page crashes the entire React app.
- * Usage: wrap the router or top-level components with <ErrorBoundary>.
+ * It sits outside the router, so it uses a plain link rather than <Link>.
  */
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false, error: null }
+    this.state = { hasError: false }
   }
 
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error }
+  static getDerivedStateFromError() {
+    return { hasError: true }
   }
 
   componentDidCatch(error, info) {
-    // In production, send to an error monitoring service (e.g. Sentry)
-    if (import.meta.env.DEV) {
-      console.error('ErrorBoundary caught:', error, info.componentStack)
-    }
+    logger.error('ErrorBoundary caught:', error, info.componentStack)
   }
 
   render() {
@@ -31,12 +28,9 @@ class ErrorBoundary extends Component {
           <p style={{ opacity: 0.6, marginBottom: '1.5rem' }}>
             An unexpected error occurred. Try refreshing the page.
           </p>
-          <Link
-            to='/dashboard'
-            className='btn btn--primary'
-            onClick={() => this.setState({ hasError: false, error: null })}>
+          <a href='/dashboard' className='btn btn--primary'>
             Back to Dashboard
-          </Link>
+          </a>
         </div>
       )
     }

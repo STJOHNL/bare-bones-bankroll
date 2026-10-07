@@ -35,11 +35,14 @@ export default function Error() {
           Return to home
         </Link>
         <Link to='/support'>Need support?</Link>
-        <div className='error--details'>
-          <span>Pathname: {pathname}</span>
-          <span>Error: {errorMessage}</span>
-          <span>{errorDetails}</span>
-        </div>
+        {/* Stack traces are for development only */}
+        {import.meta.env.DEV && (
+          <div className='error--details'>
+            <span>Pathname: {pathname}</span>
+            <span>Error: {errorMessage}</span>
+            <span>{errorDetails}</span>
+          </div>
+        )}
       </section>
     </main>
   )

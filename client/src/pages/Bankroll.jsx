@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { FaTrashAlt } from 'react-icons/fa'
+import { FaTrashAlt, FaCheck, FaBan } from 'react-icons/fa'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 // Custom Hooks
@@ -10,18 +10,32 @@ import { useBankrollContext } from '../context/BankrollContext'
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
 import ConfirmModal from '../components/ConfirmModal'
+import StatGrid from '../components/StatGrid'
+// Utils
+import { isCredit, isSessionTransaction } from '../utils/bankroll'
+import { inDateRange, localDateToISO } from '../utils/dates'
+import { formatMoney, formatPL, plColor } from '../utils/money'
 
 const PAGE_SIZE = 20
 
+const TYPE_HELP = {
+  Purchase: 'Credits bought on the site. Enter what you paid and the chips you received — any extra counts as bonus.',
+  Redemption: 'Chips cashed out to your bank. Pending redemptions leave your playable balance right away.',
+  Promo: 'Free chips from promotions, rewards or giveaways.',
+}
+
 const Bankroll = () => {
-  const { createTransaction, deleteTransaction } = useBankroll()
-  const { transactions, setTransactions, isLoading } = useBankrollContext()
+  const { createTransaction, updateTransaction, deleteTransaction } = useBankroll()
+  const { transactions, setTransactions, summary, isLoading } = useBankrollContext()
 
   // Form state
-  const [type, setType] = useState('Deposit')
+  const [type, setType] = useState('Purchase')
   const [amount, setAmount] = useState('')
+  const [chips, setChips] = useState('')
+  const [status, setStatus] = useState('Pending')
   const [note, setNote] = useState('')
   const [date, setDate] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Filter state
   const [filterType, setFilterType] = useState('All')
@@ -30,23 +44,48 @@ const Bankroll = () => {
   const [page, setPage] = useState(1)
   const [deleteTarget, setDeleteTarget] = useState(null)
 
+  const resetForm = () => {
+    setAmount('')
+    setChips('')
+    setNote('')
+    setDate('')
+    setStatus('Pending')
+  }
+
   const handleSubmit = async e => {
     e.preventDefault()
-
-    const formData = {
-      type,
-      amount: parseFloat(amount),
-      note,
-      ...(date && { date })
+    const value = parseFloat(amount)
+    if (!(value > 0)) {
+      toast.error('Enter an amount greater than 0')
+      return
     }
 
-    const res = await createTransaction(formData)
+    // For purchases `amount` is the chips credited and `cost` the dollars paid
+    const formData =
+      type === 'Purchase'
+        ? { type, cost: value, amount: parseFloat(chips) || value }
+        : { type, amount: value, ...(type === 'Redemption' && { status }) }
+
+    setIsSubmitting(true)
+    const res = await createTransaction({
+      ...formData,
+      note: note.trim(),
+      ...(date && { date: localDateToISO(date) }),
+    })
+    setIsSubmitting(false)
+
     if (res) {
       setTransactions(prev => [res, ...prev])
-      toast.success('Transaction added')
-      setAmount('')
-      setNote('')
-      setDate('')
+      toast.success(`${type} added`)
+      resetForm()
+    }
+  }
+
+  const handleStatus = async (t, nextStatus) => {
+    const res = await updateTransaction(t._id, { status: nextStatus })
+    if (res) {
+      setTransactions(prev => prev.map(x => (x._id === t._id ? res : x)))
+      toast.success(`Redemption marked ${nextStatus.toLowerCase()}`)
     }
   }
 
@@ -58,26 +97,13 @@ const Bankroll = () => {
     setDeleteTarget(null)
   }
 
-  const deposits = transactions.filter(t => t.type === 'Deposit').reduce((sum, t) => sum + t.amount, 0)
-
-  const withdrawals = transactions.filter(t => t.type === 'Withdrawal').reduce((sum, t) => sum + t.amount, 0)
-
-  const cashouts = transactions.filter(t => t.type === 'Cash-out').reduce((sum, t) => sum + t.amount, 0)
-  const buyins = transactions.filter(t => t.type === 'Buy-in').reduce((sum, t) => sum + t.amount, 0)
-  const promos = transactions.filter(t => t.type === 'Promo').reduce((sum, t) => sum + t.amount, 0)
-  const balance = deposits + cashouts + promos - withdrawals - buyins
-
-  const profit = cashouts + promos - buyins
-
   const filteredTransactions = useMemo(
     () =>
       [...transactions]
         .sort((a, b) => new Date(b.date) - new Date(a.date))
         .filter(t => {
           if (filterType !== 'All' && t.type !== filterType) return false
-          if (filterFrom && new Date(t.date) < new Date(filterFrom)) return false
-          if (filterTo && new Date(t.date) > new Date(filterTo + 'T23:59:59')) return false
-          return true
+          return inDateRange(t.date, filterFrom, filterTo)
         }),
     [transactions, filterType, filterFrom, filterTo]
   )
@@ -86,80 +112,103 @@ const Bankroll = () => {
   const safePage = Math.min(page, totalPages)
   const pagedTransactions = filteredTransactions.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
-  if (isLoading) return <Loader />
+  // Only block the page on the first load; refreshes keep the table visible
+  if (isLoading && transactions.length === 0) return <Loader />
+
+  const describe = t => {
+    if (t.type === 'Purchase') {
+      const bonus = t.amount - t.cost
+      return `Paid ${formatMoney(t.cost)}${bonus > 0 ? ` · +${formatMoney(bonus)} bonus` : ''}`
+    }
+    return null
+  }
 
   return (
     <>
       <PageTitle title={'Bankroll'} />
 
-      <div className='stats'>
-        <div className='stat'>
-          <p>Deposits</p>
-          <span className='stat__value'>${deposits.toFixed(2)}</span>
-        </div>
-        <div className='stat'>
-          <p>Withdrawals</p>
-          <span className='stat__value'>${withdrawals.toFixed(2)}</span>
-        </div>
-        <div className='stat'>
-          <p>Balance</p>
-          <span className='stat__value' style={{ color: balance >= 0 ? 'var(--green)' : 'var(--red)' }}>${balance.toFixed(2)}</span>
-        </div>
-        <div className='stat'>
-          <p>Profit</p>
-          <span className='stat__value' style={{ color: profit >= 0 ? 'var(--green)' : 'var(--red)' }}>${profit.toFixed(2)}</span>
-        </div>
-      </div>
+      <StatGrid
+        stats={[
+          { label: 'Balance', value: formatPL(summary.balance), color: plColor(summary.balance) },
+          { label: 'Purchased', value: formatMoney(summary.spent), hint: summary.bonus > 0 ? `+${formatMoney(summary.bonus)} bonus` : undefined },
+          { label: 'Redeemed', value: formatMoney(summary.redeemed) },
+          { label: 'Pending', value: formatMoney(summary.pending) },
+          { label: 'Profit', value: formatPL(summary.profit), color: plColor(summary.profit) },
+          { label: 'Net Cash', value: formatPL(summary.netCash), color: plColor(summary.netCash), hint: 'redeemed − purchased' },
+        ]}
+      />
 
       <div className='card'>
-      <form onSubmit={handleSubmit}>
-        <h2>Add Transaction</h2>
-        <label htmlFor='type'>Type</label>
-        <select
-          name='type'
-          id='type'
-          value={type}
-          onChange={e => setType(e.target.value)}
-          required>
-          <option value='Deposit'>Deposit</option>
-          <option value='Withdrawal'>Withdrawal</option>
-          <option value='Promo'>Promo</option>
-        </select>
+        <form onSubmit={handleSubmit}>
+          <h2>Add Transaction</h2>
+          <label htmlFor='type'>Type</label>
+          <select name='type' id='type' value={type} onChange={e => setType(e.target.value)} required>
+            <option value='Purchase'>Purchase</option>
+            <option value='Redemption'>Redemption</option>
+            <option value='Promo'>Promo</option>
+          </select>
+          <p className='form-hint'>{TYPE_HELP[type]}</p>
 
-        <label htmlFor='amount'>Amount ($)</label>
-        <input
-          type='number'
-          name='amount'
-          id='amount'
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          placeholder='0.00'
-          step='0.01'
-          min='0'
-          required
-        />
+          <div className='form-row'>
+            <div>
+              <label htmlFor='amount'>{type === 'Purchase' ? 'Amount paid ($)' : 'Amount ($)'}</label>
+              <input
+                type='number'
+                name='amount'
+                id='amount'
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                placeholder='0.00'
+                step='0.01'
+                min='0.01'
+                required
+              />
+            </div>
+            {type === 'Purchase' && (
+              <div>
+                <label htmlFor='chips'>Chips received</label>
+                <input
+                  type='number'
+                  name='chips'
+                  id='chips'
+                  value={chips}
+                  onChange={e => setChips(e.target.value)}
+                  placeholder={amount || 'Same as paid'}
+                  step='0.01'
+                  min='0.01'
+                />
+              </div>
+            )}
+            {type === 'Redemption' && (
+              <div>
+                <label htmlFor='status'>Status</label>
+                <select id='status' value={status} onChange={e => setStatus(e.target.value)}>
+                  <option value='Pending'>Pending</option>
+                  <option value='Completed'>Completed</option>
+                </select>
+              </div>
+            )}
+          </div>
 
-        <label htmlFor='note'>Note</label>
-        <input
-          type='text'
-          name='note'
-          id='note'
-          value={note}
-          onChange={e => setNote(e.target.value)}
-          placeholder='Optional note'
-        />
+          <label htmlFor='note'>Note</label>
+          <input
+            type='text'
+            name='note'
+            id='note'
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder='Optional note'
+            maxLength={500}
+          />
 
-        <label htmlFor='date'>Date</label>
-        <input
-          type='date'
-          name='date'
-          id='date'
-          value={date}
-          onChange={e => setDate(e.target.value)}
-        />
+          <label htmlFor='date'>Date</label>
+          <input type='date' name='date' id='date' value={date} onChange={e => setDate(e.target.value)} />
 
-        <button type='submit'>Add</button>
-      </form>
+          <button type='submit' disabled={isSubmitting} className={isSubmitting ? 'is-loading' : ''}>
+            {isSubmitting && <span className='btn-spinner' aria-hidden='true' />}
+            {isSubmitting ? 'Saving…' : 'Add'}
+          </button>
+        </form>
       </div>
 
       <div className='filter-form'>
@@ -168,10 +217,13 @@ const Bankroll = () => {
           <select
             id='filterType'
             value={filterType}
-            onChange={e => { setFilterType(e.target.value); setPage(1) }}>
+            onChange={e => {
+              setFilterType(e.target.value)
+              setPage(1)
+            }}>
             <option value='All'>All</option>
-            <option value='Deposit'>Deposit</option>
-            <option value='Withdrawal'>Withdrawal</option>
+            <option value='Purchase'>Purchase</option>
+            <option value='Redemption'>Redemption</option>
             <option value='Promo'>Promo</option>
             <option value='Buy-in'>Buy-in</option>
             <option value='Cash-out'>Cash-out</option>
@@ -183,7 +235,10 @@ const Bankroll = () => {
             type='date'
             id='filterFrom'
             value={filterFrom}
-            onChange={e => { setFilterFrom(e.target.value); setPage(1) }}
+            onChange={e => {
+              setFilterFrom(e.target.value)
+              setPage(1)
+            }}
           />
         </div>
         <div>
@@ -192,7 +247,10 @@ const Bankroll = () => {
             type='date'
             id='filterTo'
             value={filterTo}
-            onChange={e => { setFilterTo(e.target.value); setPage(1) }}
+            onChange={e => {
+              setFilterTo(e.target.value)
+              setPage(1)
+            }}
           />
         </div>
         {(filterType !== 'All' || filterFrom || filterTo) && (
@@ -222,26 +280,68 @@ const Bankroll = () => {
           </thead>
           <tbody>
             {pagedTransactions.length ? (
-              pagedTransactions.map(t => (
-                <tr key={t._id}>
-                  <td data-label='Type'>{t.type}</td>
-                  <td data-label='Amount' className={['Deposit', 'Cash-out', 'Promo'].includes(t.type) ? 'amount--pos' : 'amount--neg'}>${t.amount.toFixed(2)}</td>
-                  <td data-label='Note'>{t.note || '—'}</td>
-                  <td data-label='Date'>{t.date ? format(new Date(t.date), 'MM/dd/yy') : '—'}</td>
-                  <td data-label='Manage'>
-                    <button
-                      onClick={() => setDeleteTarget(t._id)}
-                      className='btn btn--subtle'
-                      aria-label='Delete transaction'>
-                      <FaTrashAlt className='btn--icon--danger' />
-                    </button>
-                  </td>
-                </tr>
-              ))
+              pagedTransactions.map(t => {
+                const cancelled = t.status === 'Cancelled'
+                const detail = describe(t)
+                return (
+                  <tr key={t._id} style={cancelled ? { opacity: 0.5 } : undefined}>
+                    <td data-label='Type'>
+                      {t.type}
+                      {t.type === 'Redemption' && (
+                        <span className={`badge badge--${t.status.toLowerCase()}`} style={{ marginLeft: '0.5rem' }}>
+                          {t.status}
+                        </span>
+                      )}
+                    </td>
+                    <td data-label='Amount' className={isCredit(t) ? 'amount--pos' : 'amount--neg'}>
+                      {cancelled ? <s>{formatMoney(t.amount)}</s> : formatMoney(t.amount)}
+                    </td>
+                    <td data-label='Note'>
+                      {t.note || (detail ? '' : '—')}
+                      {detail && <span className='td__sub'>{detail}</span>}
+                    </td>
+                    <td data-label='Date'>{t.date ? format(new Date(t.date), 'MM/dd/yy') : '—'}</td>
+                    <td data-label='Manage'>
+                      {t.type === 'Redemption' && t.status === 'Pending' && (
+                        <>
+                          <button
+                            onClick={() => handleStatus(t, 'Completed')}
+                            className='btn btn--subtle'
+                            title='Mark completed'
+                            aria-label='Mark redemption completed'>
+                            <FaCheck className='btn--icon' />
+                          </button>
+                          <button
+                            onClick={() => handleStatus(t, 'Cancelled')}
+                            className='btn btn--subtle'
+                            title='Mark cancelled'
+                            aria-label='Mark redemption cancelled'>
+                            <FaBan className='btn--icon' />
+                          </button>
+                        </>
+                      )}
+                      {isSessionTransaction(t) ? (
+                        <span className='td__sub' title='Edit or delete the session to change this'>
+                          From session
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setDeleteTarget(t._id)}
+                          className='btn btn--subtle'
+                          aria-label={`Delete ${t.type.toLowerCase()}`}>
+                          <FaTrashAlt className='btn--icon--danger' />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })
             ) : (
               <tr>
                 <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', opacity: 0.4 }}>
-                  {transactions.length === 0 ? 'No transactions yet. Add a deposit to get started.' : 'No transactions match your filters.'}
+                  {transactions.length === 0
+                    ? 'No transactions yet. Add a purchase to get started.'
+                    : 'No transactions match your filters.'}
                 </td>
               </tr>
             )}
@@ -250,13 +350,12 @@ const Bankroll = () => {
       </div>
       {totalPages > 1 && (
         <div className='pagination'>
-          <button
-            className='btn btn--subtle'
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={safePage === 1}>
+          <button className='btn btn--subtle' onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>
             ‹ Prev
           </button>
-          <span>{safePage} / {totalPages}</span>
+          <span>
+            {safePage} / {totalPages}
+          </span>
           <button
             className='btn btn--subtle'
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}

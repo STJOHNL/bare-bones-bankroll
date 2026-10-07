@@ -13,6 +13,7 @@ dist-electron/
 .env.*.local
 server/config/.env
 client/.env
+config.env
 
 # Logs
 *.log

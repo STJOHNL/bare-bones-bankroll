@@ -9,6 +9,8 @@ const playerNoteSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
+playerNoteSchema.index({ user: 1, updatedAt: -1 })
+
 const PlayerNote = mongoose.model('PlayerNote', playerNoteSchema)
 
 export default PlayerNote

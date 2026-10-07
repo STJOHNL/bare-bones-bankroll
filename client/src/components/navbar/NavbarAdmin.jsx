@@ -14,13 +14,9 @@ const NavbarAdmin = () => {
   const [showSignOutModal, setShowSignOutModal] = useState(false)
 
   const handleSignOut = async () => {
-    try {
-      toast.success('See you later!')
-      await signOut()
-      navigate('/sign-in')
-    } catch (error) {
-      console.log(error)
-    }
+    await signOut()
+    toast.success('See you later!')
+    navigate('/sign-in')
   }
 
   return (

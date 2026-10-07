@@ -1,122 +1,111 @@
 import User from '../models/User.js'
+import Session from '../models/Session.js'
+import Transaction from '../models/Transaction.js'
+import PlayerNote from '../models/PlayerNote.js'
+
+// Only these fields ever leave the server
+const SAFE_FIELDS = '_id fName lName email role createdAt'
+
+const toSafeUser = user => ({
+  _id: user._id,
+  fName: user.fName,
+  lName: user.lName,
+  email: user.email,
+  role: user.role,
+  createdAt: user.createdAt,
+})
+
+const isAdmin = req => req.user.role === 'Admin'
+const isSelf = (req, id) => req.user._id.toString() === String(id)
 
 export default {
   // @desc Get Users
   // @route GET /api/user
-  // @access PRIVATE
+  // @access ADMIN
   getUsers: async (req, res, next) => {
     try {
-      const users = await User.find().select('-password').sort({ fName: 1 })
+      const users = await User.find().select(SAFE_FIELDS).sort({ fName: 1 }).lean()
 
-      res.status(200).json(users)
+      res.status(200).json(users.map(toSafeUser))
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
   // @desc Get User
   // @route GET /api/user/:id
-  // @access PRIVATE
+  // @access PRIVATE (self or admin)
   getUser: async (req, res, next) => {
     try {
-      const user = await User.findById(req.params.id).select('-password')
-
-      res.status(200).json(user)
-    } catch (error) {
-      console.log(error)
-    }
-  },
-
-  // @desc Create User
-  // @route POST /api/user
-  // @access PRIVATE
-  createUser: async (req, res, next) => {
-    try {
-      let { email, fName, lName, phone, role, team } = req.body
-      email = email.toLowerCase()
-
-      const userExists = await User.findOne({ email })
-
-      if (userExists) {
-        res.status(400).json({ message: 'User with that email already exists' })
-        return
+      if (!isSelf(req, req.params.id) && !isAdmin(req)) {
+        return res.status(403).json({ message: 'You do not have permission to view this user' })
       }
 
-      const user = await User.create({
-        email,
-        fName,
-        lName,
-        phone,
-        role,
-        team,
-      })
+      const user = await User.findById(req.params.id).select(SAFE_FIELDS).lean()
+      if (!user) return res.status(404).json({ message: 'User not found' })
 
-      if (user) {
-        const userObj = user.toObject()
-        delete userObj.password
-        res.status(201).json(userObj)
-      } else {
-        res.status(400).json({ error: error.message })
-      }
+      res.status(200).json(toSafeUser(user))
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
   // @desc Edit User
   // @route PUT /api/user
-  // @access PRIVATE
+  // @access PRIVATE (self or admin; only admins may change roles)
   editUser: async (req, res, next) => {
     try {
-      let { id, updatingUserId, email, fName, lName, phone, role, team } =
-        req.body
+      const { id, email, fName, lName, role } = req.body
 
-      // Get users from db
-      const updatingUser = await User.findById(updatingUserId)
-
-      if (!updatingUser) {
-        return res.status(404).json({ message: 'User not found' })
+      if (!isSelf(req, id) && !isAdmin(req)) {
+        return res.status(403).json({ message: 'You do not have permission to update this user' })
       }
 
-      // Check permission to update user
-      if (updatingUser.id !== id && updatingUser.role !== 'Admin') {
-        return res
-          .status(403)
-          .json({ message: 'You do not have permission to update this user' })
+      const user = await User.findById(id)
+      if (!user) return res.status(404).json({ message: 'User not found' })
+
+      if (role !== undefined && role !== user.role && !isAdmin(req)) {
+        return res.status(403).json({ message: 'Only admins can change roles' })
       }
 
-      // Update user document
-      const updatedUser = await User.findByIdAndUpdate(
-        id,
-        {
-          email,
-          fName,
-          lName,
-          phone,
-          role,
-          team,
-        },
-        {
-          new: true,
-        }
-      )
+      const emailTaken = await User.exists({ email, _id: { $ne: user._id } })
+      if (emailTaken) {
+        return res.status(409).json({ message: 'Email already in use' })
+      }
 
-      res.status(200).json(updatedUser)
+      user.fName = fName
+      user.lName = lName
+      user.email = email
+      if (role !== undefined && isAdmin(req)) user.role = role
+      await user.save({ validateModifiedOnly: true })
+
+      res.status(200).json(toSafeUser(user))
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 
-  // @desc Delete Users
+  // @desc Delete User (and all of their data)
   // @route DELETE /api/user/:id
-  // @access PRIVATE
+  // @access ADMIN
   deleteUser: async (req, res, next) => {
     try {
-      const deletedUser = await User.findByIdAndDelete(req.params.id)
+      if (isSelf(req, req.params.id)) {
+        return res.status(400).json({ message: 'You cannot delete your own account' })
+      }
 
-      res.status(200).json(deletedUser)
+      const deletedUser = await User.findByIdAndDelete(req.params.id)
+      if (!deletedUser) return res.status(404).json({ message: 'User not found' })
+
+      await Promise.all([
+        Session.deleteMany({ user: deletedUser._id }),
+        Transaction.deleteMany({ user: deletedUser._id }),
+        PlayerNote.deleteMany({ user: deletedUser._id }),
+      ])
+
+      res.status(200).json(toSafeUser(deletedUser))
     } catch (error) {
-      console.log(error)
+      next(error)
     }
   },
 }

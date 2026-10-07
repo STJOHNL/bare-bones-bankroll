@@ -442,8 +442,14 @@ nav {
     padding: 0.4rem 0.55rem;
   }
 
+  /* Icon-only, but the label stays available to screen readers */
   .nav__item span {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 
   .nav__item svg {
@@ -2291,6 +2297,39 @@ h1.heading-xl {
   color: var(--text-muted);
 }
 
+.badge--cancelled {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: var(--red);
+}
+
+/* Secondary line under a table cell value */
+.td__sub {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Small caption under a stat tile value */
+.stat__hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Hidden visually but still read by screen readers */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ============================================= */
 /* ============================================= */
 /* Outline Button */
@@ -2556,9 +2595,41 @@ h1.heading-xl {
     padding: 0.75rem 0.75rem 2rem;
   }
 
-  /* Nav */
-  .nav__item span {
+  /* Nav: two rows — brand, balance and toggles on top; links as a full-width tab row */
+  nav {
+    flex-wrap: wrap;
+    padding: 0.35rem 0.75rem 0;
+  }
+
+  .nav__brand {
+    margin-right: auto;
+    min-width: 0;
+  }
+
+  .nav__links {
+    order: 3;
+    width: 100%;
+    margin: 0.25rem 0 0;
+    justify-content: space-between;
+    gap: 0;
+    padding-bottom: 0.3rem;
+    /* Safety net if an extra link (e.g. Admin) doesn't fit on very narrow screens */
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav__links::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Icon-only, but the label stays available to screen readers */
+  .nav__item span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 
   .nav__item svg {
@@ -2566,7 +2637,12 @@ h1.heading-xl {
   }
 
   .nav__item {
-    padding: 0.4rem 0.6rem;
+    flex: 1 0 auto;
+    padding: 0.5rem 0.4rem;
+  }
+
+  .nav__item.active::after {
+    bottom: 0.1rem;
   }
 
   /* Responsive tables (generic fallback for tables without a dedicated mobile layout) */

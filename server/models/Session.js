@@ -1,4 +1,7 @@
 import mongoose from 'mongoose'
+import { roundCents } from '../utils/money.js'
+
+const money = { type: Number, set: roundCents }
 
 const sessionSchema = new mongoose.Schema(
   {
@@ -7,14 +10,24 @@ const sessionSchema = new mongoose.Schema(
     type: { type: String, enum: ['Cash', 'Tournament'], required: true },
     game: { type: String, enum: ['NL', 'PLO'], required: true },
     name: String,
-    buyin: Number,
-    cashout: Number,
+    // Cash game stakes (small blind / big blind)
+    sb: money,
+    bb: money,
+    hands: {
+      type: Number,
+      min: 0,
+      validate: { validator: v => v == null || Number.isInteger(v), message: 'Hands must be a whole number' },
+    },
+    buyin: money,
+    cashout: money,
     start: Date,
     end: Date,
-    notes: String
+    notes: String,
   },
   { timestamps: true }
 )
+
+sessionSchema.index({ user: 1, start: -1 })
 
 const Session = mongoose.model('Session', sessionSchema)
 

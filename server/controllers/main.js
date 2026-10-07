@@ -4,9 +4,9 @@ export default {
   // @access PUBLIC
   index: async (req, res, next) => {
     try {
-      return res.status(200).json({ message: 'Boiler' })
+      return res.status(200).json({ message: 'Bare Bones Bankroll API' })
     } catch (error) {
-      console.log(error)
+      next(error)
     }
-  }
+  },
 }

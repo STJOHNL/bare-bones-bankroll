@@ -1,68 +1,52 @@
+import { useMemo } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
+// Context
+import { useUserContext } from '../context/UserContext'
 
-export const useApi = onUnauthorized => {
-  const api = axios.create({
-    baseURL: import.meta.env.DEV ? 'http://localhost:5004/api' : '/api',
-    withCredentials: true,
-  })
+// One shared instance; Vite proxies /api to the backend in development and the
+// server hosts the client in production/Electron, so the path is always relative.
+export const api = axios.create({
+  baseURL: '/api',
+  withCredentials: true,
+})
 
-  const handleError = error => {
-    if (error.response?.status === 401) {
-      onUnauthorized?.()
-      throw error // Throw to handle loading states in components
+const errorMessage = error => error?.response?.data?.message || 'An unexpected error occurred'
+
+/**
+ * Thin request helpers. Errors are shown as a toast and resolve to null so
+ * callers can simply check the result — loading states always settle.
+ */
+export const useApi = () => {
+  const { signOutUser } = useUserContext()
+
+  return useMemo(() => {
+    const handleError = error => {
+      const url = error?.config?.url || ''
+      // A 401 outside the auth endpoints means the session expired
+      if (error?.response?.status === 401 && !url.startsWith('/auth/')) {
+        toast.error('Your session has expired. Please sign in again.', { id: 'session-expired' })
+        signOutUser()
+        return null
+      }
+      toast.error(errorMessage(error))
+      return null
     }
 
-    // Show toast for non-auth errors
-    if (error?.response?.data?.message) {
-      toast.error(error.response.data.message)
-    } else {
-      toast.error('An unexpected error occurred')
+    const request = method => async (url, body) => {
+      try {
+        const { data } = await api.request({ method, url, data: body })
+        return data
+      } catch (error) {
+        return handleError(error)
+      }
     }
 
-    throw error // Throw to handle loading states in components
-  }
-
-  const get = async url => {
-    try {
-      const { data } = await api.get(url)
-      return data
-    } catch (error) {
-      handleError(error)
+    return {
+      get: request('get'),
+      post: request('post'),
+      put: request('put'),
+      del: request('delete'),
     }
-  }
-
-  const post = async (url, body) => {
-    try {
-      const { data } = await api.post(url, body)
-      return data
-    } catch (error) {
-      handleError(error)
-    }
-  }
-
-  const put = async (url, body) => {
-    try {
-      const { data } = await api.put(url, body)
-      return data
-    } catch (error) {
-      handleError(error) // handleError always throws, so components can manage loading state
-    }
-  }
-
-  const del = async url => {
-    try {
-      const { data } = await api.delete(url)
-      return data
-    } catch (error) {
-      handleError(error) // handleError always throws, so components can manage loading state
-    }
-  }
-
-  return {
-    get,
-    post,
-    put,
-    del,
-  }
+  }, [signOutUser])
 }

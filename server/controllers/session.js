@@ -1,5 +1,12 @@
 import Session from '../models/Session.js'
 import Transaction from '../models/Transaction.js'
+import { normalizeSession, pickSessionFields } from '../utils/sessionRules.js'
+import { syncSessionLedger } from '../utils/ledger.js'
+
+const MAX_IMPORT_ROWS = 2000
+const IMPORT_SYNC_BATCH = 50
+
+const isPlainObject = v => v !== null && typeof v === 'object' && !Array.isArray(v)
 
 export default {
   // @desc Get Sessions
@@ -30,71 +37,44 @@ export default {
     }
   },
 
-  // @desc Create Session
+  // @desc Create Session (and its Buy-in / Cash-out transactions)
   // @route POST /api/session
   // @access PRIVATE
   createSession: async (req, res, next) => {
     try {
-      const { venue, type, game, name, buyin, cashout, start, end, notes } = req.body
+      const { value, error } = normalizeSession(req.body)
+      if (error) return res.status(422).json({ message: error })
 
       // Attach authenticated user so the session is scoped correctly
-      const sessionObj = await Session.create({
-        user: req.user._id,
-        venue,
-        type,
-        game,
-        name,
-        buyin,
-        cashout,
-        start,
-        end,
-        notes
-      })
+      const session = await Session.create({ ...value, user: req.user._id })
+      await syncSessionLedger(session)
 
-      res.status(201).json(sessionObj)
+      res.status(201).json(session)
     } catch (error) {
       next(error)
     }
   },
 
-  // @desc Edit Session
+  // @desc Edit Session (partial update — only the fields sent are changed)
   // @route PUT /api/session
   // @access PRIVATE
   editSession: async (req, res, next) => {
     try {
-      const { id, venue, type, game, name, buyin, cashout, start, end, notes } = req.body
+      const { id } = req.body
 
       // Verify ownership before updating
       const existing = await Session.findOne({ _id: id, user: req.user._id })
       if (!existing) return res.status(404).json({ message: 'Session not found' })
 
-      const updatedSession = await Session.findByIdAndUpdate(
-        id,
-        { venue, type, game, name, buyin, cashout, start, end, notes },
-        { new: true }
-      )
+      const incoming = pickSessionFields(req.body)
+      const { value, error } = normalizeSession({ ...existing.toObject(), ...incoming })
+      if (error) return res.status(422).json({ message: error })
 
-      // Upsert Buy-in transaction — filter by sessionId + type to find existing record,
-      // include user in the update so newly created docs are scoped correctly
-      await Transaction.findOneAndUpdate(
-        { sessionId: id, type: 'Buy-in' },
-        { amount: buyin, note: name, date: start || end, user: req.user._id },
-        { upsert: true, new: true }
-      )
+      existing.set(value)
+      await existing.save()
+      await syncSessionLedger(existing)
 
-      // Upsert Cash-out whenever a cashout value exists (covers active tournaments
-      // with incremental winnings like bounties/PKOs), otherwise remove any stale one
-      if (cashout > 0) {
-        await Transaction.findOneAndUpdate(
-          { sessionId: id, type: 'Cash-out' },
-          { amount: cashout, note: name, date: end || start, user: req.user._id },
-          { upsert: true, new: true }
-        )
-      } else {
-        await Transaction.findOneAndDelete({ sessionId: id, type: 'Cash-out' })
-      }
-
-      res.status(200).json(updatedSession)
+      res.status(200).json(existing)
     } catch (error) {
       next(error)
     }
@@ -105,32 +85,41 @@ export default {
   // @access PRIVATE
   importSessions: async (req, res, next) => {
     try {
-      const sessions = req.body
-      if (!Array.isArray(sessions) || sessions.length === 0) {
-        return res.status(400).json({ message: 'No sessions provided' })
+      const rows = req.body
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(422).json({ message: 'No sessions provided' })
+      }
+      if (rows.length > MAX_IMPORT_ROWS) {
+        return res.status(422).json({ message: `A maximum of ${MAX_IMPORT_ROWS} sessions can be imported at once` })
       }
 
-      // Attach authenticated user to every imported session
-      const sessionDocs = sessions.map(s => ({ ...s, user: req.user._id }))
-      const created = await Session.insertMany(sessionDocs, { ordered: false })
+      // Each row is validated independently; only whitelisted fields survive,
+      // so the client can never set _id, user or timestamps
+      const docs = []
+      const skipped = []
+      rows.forEach((row, index) => {
+        if (!isPlainObject(row)) {
+          skipped.push({ row: index + 1, reason: 'Invalid row' })
+          return
+        }
+        const { value, error } = normalizeSession(row)
+        if (error) skipped.push({ row: index + 1, reason: error })
+        else docs.push({ ...value, user: req.user._id })
+      })
 
-      // Create Buy-in and Cash-out transactions for completed sessions (end date exists)
-      const txnDocs = []
-      for (const s of created) {
-        if (s.end && s.buyin != null)
-          txnDocs.push({ type: 'Buy-in', amount: s.buyin, note: s.name, date: s.start, sessionId: s._id, user: req.user._id })
-        if (s.end && s.cashout != null)
-          txnDocs.push({ type: 'Cash-out', amount: s.cashout, note: s.name, date: s.end, sessionId: s._id, user: req.user._id })
+      const created = docs.length ? await Session.insertMany(docs) : []
+
+      for (let i = 0; i < created.length; i += IMPORT_SYNC_BATCH) {
+        await Promise.all(created.slice(i, i + IMPORT_SYNC_BATCH).map(syncSessionLedger))
       }
-      const txns = txnDocs.length ? await Transaction.insertMany(txnDocs, { ordered: false }) : []
 
-      res.status(201).json({ imported: created.length, transactions: txns })
+      res.status(201).json({ imported: created.length, skipped })
     } catch (error) {
       next(error)
     }
   },
 
-  // @desc Delete Session
+  // @desc Delete Session (and its transactions)
   // @route DELETE /api/session/:id
   // @access PRIVATE
   deleteSession: async (req, res, next) => {
@@ -139,11 +128,11 @@ export default {
       const session = await Session.findOneAndDelete({ _id: req.params.id, user: req.user._id })
       if (!session) return res.status(404).json({ message: 'Session not found' })
 
-      await Transaction.deleteMany({ sessionId: req.params.id })
+      await Transaction.deleteMany({ sessionId: session._id, user: req.user._id })
 
       res.status(200).json(session)
     } catch (error) {
       next(error)
     }
-  }
+  },
 }

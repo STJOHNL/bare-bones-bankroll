@@ -1,62 +1,43 @@
-import { createContext, useContext, useState, useEffect } from 'react'
-import { jwtDecode } from 'jwt-decode'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import axios from 'axios'
 import logger from '../utils/logger'
 
 const UserContext = createContext()
+
+// The auth token lives only in an httpOnly cookie, so page scripts never see
+// it. The signed-in user is loaded from the server instead of decoding a JWT.
+const fetchCurrentUser = async () => {
+  try {
+    const { data } = await axios.get('/api/auth/me', { withCredentials: true })
+    return data?.user || null
+  } catch (error) {
+    if (error?.response?.status !== 401) logger.error('Failed to load current user:', error)
+    return null
+  }
+}
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const readUserFromToken = async () => {
-    try {
-      // In Electron, retrieve the persisted token from the main-process store;
-      // otherwise fall back to localStorage (standard web behaviour).
-      const token = window.electronAPI?.isElectron
-        ? await window.electronAPI.getToken()
-        : localStorage.getItem('token')
-
-      if (token) {
-        // Sync to localStorage so any code that reads it directly keeps working.
-        localStorage.setItem('token', token)
-        const payload = jwtDecode(token)
-        if (Date.now() < payload.exp * 1000) {
-          setUser(payload.user)
-        }
-      }
-    } catch (error) {
-      logger.error('Failed to read user from token:', error)
-      localStorage.clear()
-      setUser(null)
-    }
-    setLoading(false)
-  }
-
   useEffect(() => {
-    readUserFromToken()
+    let cancelled = false
+    fetchCurrentUser().then(current => {
+      if (cancelled) return
+      setUser(current)
+      setLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const signOutUser = () => {
-    localStorage.clear()
-    setUser(null)
-    // In Electron, also clear the persisted token so the next launch shows login.
-    window.electronAPI?.clearToken()
-  }
+  // Clears local auth state only; the sign-out request is made by useAuth
+  const signOutUser = useCallback(() => setUser(null), [])
 
-  const setToken = (token) => {
-    localStorage.setItem('token', token)
-    // In Electron, persist the token so subsequent launches skip sign-in.
-    window.electronAPI?.setToken(token)
-    readUserFromToken()
-  }
+  const value = useMemo(() => ({ user, setUser, signOutUser, loading }), [user, signOutUser, loading])
 
-  return (
-    <UserContext.Provider
-      value={{ user, setUser, signOutUser, setToken, loading }}
-    >
-      {children}
-    </UserContext.Provider>
-  )
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>
 }
 
 export const useUserContext = () => {

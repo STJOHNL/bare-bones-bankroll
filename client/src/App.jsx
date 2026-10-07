@@ -1,4 +1,4 @@
-import React from 'react'
+import { lazy } from 'react'
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom'
 import PrivateRoute from './routes/PrivateRoute'
 import AdminRoute from './routes/AdminRoute'
@@ -8,28 +8,28 @@ import PublicLayout from './layouts/PublicLayout'
 import PrivateLayout from './layouts/PrivateLayout'
 import AdminLayout from './layouts/AdminLayout'
 
-// Pages
+// Pages — error pages load eagerly; the rest are split into their own chunks
 import Error from './pages/errors/Error'
 import NotFound from './pages/errors/NotFound'
-import Home from './pages/Home'
-import Terms from './pages/Terms'
-import PrivacyPolicy from './pages/PrivacyPolicy'
-import SignIn from './pages/SignIn'
-import SignUp from './pages/SignUp'
-import ForgotPassword from './pages/ForgotPassword'
-import ResetPassword from './pages/ResetPassword'
-import Dashboard from './pages/Dashboard'
-import History from './pages/History'
-import Profile from './pages/Profile'
-import Admin from './pages/Admin'
-import Support from './pages/Support'
-import NewSession from './pages/NewSession'
-import EditSession from './pages/EditSession'
-import Bankroll from './pages/Bankroll'
-import Reports from './pages/Reports'
-import Randomizer from './pages/Randomizer'
-import SupportTickets from './pages/SupportTickets'
-import EditSupportTicket from './pages/EditSupportTicket'
+const Home = lazy(() => import('./pages/Home'))
+const Terms = lazy(() => import('./pages/Terms'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const SignIn = lazy(() => import('./pages/SignIn'))
+const SignUp = lazy(() => import('./pages/SignUp'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const History = lazy(() => import('./pages/History'))
+const Profile = lazy(() => import('./pages/Profile'))
+const Admin = lazy(() => import('./pages/Admin'))
+const Support = lazy(() => import('./pages/Support'))
+const NewSession = lazy(() => import('./pages/NewSession'))
+const EditSession = lazy(() => import('./pages/EditSession'))
+const Bankroll = lazy(() => import('./pages/Bankroll'))
+const Reports = lazy(() => import('./pages/Reports'))
+const Randomizer = lazy(() => import('./pages/Randomizer'))
+const SupportTickets = lazy(() => import('./pages/SupportTickets'))
+const EditSupportTicket = lazy(() => import('./pages/EditSupportTicket'))
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -184,8 +184,7 @@ const router = createBrowserRouter(
 )
 
 function App() {
-  // ErrorBoundary wraps the entire app so any unhandled render error shows a
-  // graceful fallback instead of crashing the whole UI
+  // ErrorBoundary catches render errors anywhere in the app and shows a fallback
   return (
     <ErrorBoundary>
       <RouterProvider router={router} />

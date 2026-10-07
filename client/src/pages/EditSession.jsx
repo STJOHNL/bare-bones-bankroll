@@ -13,19 +13,18 @@ const EditSession = () => {
   const location = useLocation()
   const { getSessionById } = useSession()
 
-  const [isLoading, setIsLoading] = useState(false)
+  // Start in the loading state so the form never mounts with empty fields
+  const [isLoading, setIsLoading] = useState(true)
   const [session, setSession] = useState()
 
   useEffect(() => {
     const fetchSession = async () => {
       setIsLoading(true)
-      const res = await getSessionById(id)
-      setSession(res)
+      setSession(await getSessionById(id))
       setIsLoading(false)
     }
-
     fetchSession()
-  }, [])
+  }, [id, getSessionById])
 
   const handleSubmit = () => {
     navigate(location.state?.returnTo || '/dashboard')
@@ -36,11 +35,13 @@ const EditSession = () => {
   return (
     <>
       <PageTitle title={'Edit Session'} />
-      <SessionForm
-        parentData={session}
-        buttonText={'Save Changes'}
-        onSubmitCallback={handleSubmit}
-      />
+      {session ? (
+        <SessionForm parentData={session} buttonText={'Save Changes'} onSubmitCallback={handleSubmit} />
+      ) : (
+        <div className='empty-state'>
+          <span className='empty-state__title'>Session not found</span>
+        </div>
+      )}
     </>
   )
 }

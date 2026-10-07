@@ -1,20 +1,43 @@
 import jwt from 'jsonwebtoken'
+import User from '../models/User.js'
 
-// Verifies the JWT cookie and attaches the decoded user to req.user.
-// Returns 401 if the token is missing or invalid.
+const OBJECT_ID = /^[a-f0-9]{24}$/i
+
+// Verifies the JWT cookie, loads the user and attaches a safe user object to req.user.
+// Returns 401 if the token is missing, invalid, or has been revoked (tokenVersion bump).
 const protect = async (req, res, next) => {
+  const token = req?.cookies?.token
+  if (!token) {
+    return res.status(401).json({ message: 'You must log in first.' })
+  }
+
+  let decoded
   try {
-    const token = req?.cookies?.token
-    if (!token) {
-      return res.status(401).json({ message: 'You must log in first.' })
+    decoded = jwt.verify(token, process.env.JWT_SECRET)
+  } catch (_error) {
+    return res.status(401).json({ message: 'Invalid or expired token.' })
+  }
+
+  if (typeof decoded?.sub !== 'string' || !OBJECT_ID.test(decoded.sub)) {
+    return res.status(401).json({ message: 'Invalid or expired token.' })
+  }
+
+  try {
+    const user = await User.findById(decoded.sub).select('fName lName email role tokenVersion')
+    if (!user || decoded.ver !== (user.tokenVersion ?? 0)) {
+      return res.status(401).json({ message: 'Invalid or expired token.' })
     }
 
-    // Decode token and expose user on request so controllers can scope queries
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    req.user = decoded.user
+    req.user = {
+      _id: user._id,
+      fName: user.fName,
+      lName: user.lName,
+      email: user.email,
+      role: user.role,
+    }
     next()
   } catch (error) {
-    return res.status(401).json({ message: 'Invalid or expired token.' })
+    next(error)
   }
 }
 

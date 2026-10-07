@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- this module is the console wrapper */
 /**
  * Production-safe logger that only outputs in development mode.
  * Replace all direct console.log/console.error calls with this utility

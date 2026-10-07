@@ -14,30 +14,32 @@ const ResetPassword = () => {
   // Form state
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async e => {
     e.preventDefault()
 
     if (password !== confirmPassword) {
       toast.error('Passwords do not match')
-    } else {
-      const formData = { password, confirmPassword, token }
-      const res = await resetPassword(formData)
-      if (res) {
-        toast.success('Password has been updated!')
-        navigate('/')
-      }
+      return
     }
-    setPassword('')
-    setConfirmPassword('')
+
+    setIsSubmitting(true)
+    const res = await resetPassword({ password, token })
+    setIsSubmitting(false)
+
+    if (res) {
+      toast.success('Password has been updated! Sign in with your new password.')
+      navigate('/sign-in')
+    } else {
+      setPassword('')
+      setConfirmPassword('')
+    }
   }
 
   return (
     <>
-      <PageTitle
-        title={'Reset Password'}
-        hideTitle
-      />
+      <PageTitle title={'Reset Password'} hideTitle />
       <form onSubmit={handleSubmit}>
         <h1 className='heading-lg'>Create New Password</h1>
         <label htmlFor='password'>Password</label>
@@ -45,10 +47,13 @@ const ResetPassword = () => {
           type='password'
           name='password'
           id='password'
-          placeholder='Password'
+          placeholder='At least 8 characters'
+          autoComplete='new-password'
+          minLength={8}
           onChange={e => setPassword(e.target.value)}
           value={password}
           required
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
         />
         <label htmlFor='confirmPassword'>Confirm</label>
@@ -57,11 +62,16 @@ const ResetPassword = () => {
           name='confirmPassword'
           id='confirmPassword'
           placeholder='Confirm Password'
+          autoComplete='new-password'
+          minLength={8}
           onChange={e => setConfirmPassword(e.target.value)}
           value={confirmPassword}
           required
         />
-        <button type='submit'>Update Password</button>
+        <button type='submit' disabled={isSubmitting} className={isSubmitting ? 'is-loading' : ''}>
+          {isSubmitting && <span className='btn-spinner' aria-hidden='true' />}
+          {isSubmitting ? 'Updating…' : 'Update Password'}
+        </button>
       </form>
       <div className='auth-links'>
         <Link to='/sign-in'>Return to sign in</Link>

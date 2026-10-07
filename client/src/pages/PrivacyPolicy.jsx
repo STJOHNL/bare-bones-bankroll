@@ -56,8 +56,9 @@ const PrivacyPolicy = () => {
 
         <h2>6. Cookies &amp; Storage</h2>
         <p>
-          Bankroll uses authentication tokens stored in your browser's local storage to keep you signed
-          in. We do not use third-party tracking cookies or advertising cookies.
+          Bankroll keeps you signed in with a secure, HTTP-only authentication cookie. Display
+          preferences (theme, hidden balance) and saved hands are kept in your browser&apos;s local
+          storage. We do not use third-party tracking cookies or advertising cookies.
         </p>
 
         <h2>7. Data Retention</h2>

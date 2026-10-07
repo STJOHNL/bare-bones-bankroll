@@ -5,8 +5,10 @@ A poker bankroll tracker built with React, Node.js/Express, and MongoDB. Availab
 ## Features
 
 - Log poker sessions (Online/Live, Cash/Tournament, NL/PLO) with buy-in, cash-out, and notes
-- Track transactions: deposits, withdrawals, buy-ins, cash-outs, and promo bonuses
-- Bankroll statistics and session history
+- Cash sessions use structured stakes (small/big blind) with optional hands played for bb/100
+- Built for sweepstakes sites like Club WPT Gold: track purchases (dollars paid vs chips received), redemptions (pending/completed/cancelled), and promos
+- Session buy-ins and cash-outs are recorded in the ledger automatically by the server
+- Bankroll statistics, reports by stakes, and session history with CSV export/import
 - JWT-based authentication with password reset via email
 - Admin dashboard for support ticket management
 - Native Windows desktop app with auto-updates
@@ -39,14 +41,13 @@ FROM_EMAIL=noreply@example.com
 NODE_ENV=development
 ADMIN_EMAIL=admin@example.com
 CLIENT_URL=http://localhost:5173
+# Optional: set when running behind a reverse proxy (e.g. 1) so rate limits see client IPs
+TRUST_PROXY=
 ```
 
-**Client** — `client/.env`
+**Client** — no environment file is needed. The client always calls `/api`; in development Vite proxies it to the server on port 5004 (override with `API_PORT`).
 
-```
-VITE_BASE_URL=http://localhost:5000/api
-VITE_ASSETS_URL=http://localhost:5000
-```
+**Desktop app** — packaged builds never include `server/config/.env`. Put the same keys in `%APPDATA%\Bare Bones Bankroll\config.env`; the app shows the exact path on first launch if the file is missing.
 
 ## Installation
 
@@ -114,15 +115,15 @@ bare-bones-bankroll/
 │       ├── components/  # Reusable UI components
 │       ├── context/     # UserContext, BankrollContext
 │       ├── hooks/       # Custom hooks
-│       └── utils/       # API clients and utilities
+│       └── utils/       # Bankroll, stats, stakes, CSV and date helpers
 ├── server/              # Express backend
 │   ├── models/          # Mongoose schemas (User, Session, Transaction, Message)
 │   ├── controllers/     # Route handlers
 │   ├── routes/          # API endpoint definitions
 │   └── middleware/      # Auth, validation, error handling
 └── electron/            # Electron main process
-    ├── main.js          # Starts server, creates window, manages JWT storage
-    └── preload.js       # Exposes window.electronAPI to renderer
+    ├── main.js          # Loads config, starts the local server, creates the window
+    └── preload.js       # Exposes a minimal window.electronAPI to the renderer
 ```
 
 ## Electron Auto-Updates
@@ -139,7 +140,7 @@ Updates are delivered via **GitHub Releases** using `electron-updater`. The flow
 
 2. **User receives the update automatically**
 
-   When the packaged app starts, `autoUpdater.checkForUpdatesAndNotify()` runs and checks GitHub Releases for a newer version.
+   When the packaged app starts, `autoUpdater.checkForUpdates()` runs and checks GitHub Releases for a newer version.
 
    - If an update is found, a dialog notifies the user that the new version is **downloading in the background**.
    - Once the download completes, a second dialog prompts the user to **Restart Now** or **Later**.
@@ -150,16 +151,32 @@ Updates are delivered via **GitHub Releases** using `electron-updater`. The flow
    Auto-update only runs in packaged builds (`app.isPackaged === true`). It is silently skipped during `npm run electron:dev`.
 
 **Release checklist:**
-- Bump `version` in the root `package.json` before building
-- Attach the installer (`.exe`) and `latest.yml` from `dist-electron/` to the GitHub Release
+- Bump `version` in the root `package.json` (and `client/package.json`) before building
+- Commit, then tag the commit `vX.Y.Z` and push the tag
+- Run `npm run electron:build`
+- Create a GitHub Release for the tag and attach `Bare-Bones-Bankroll-Setup-X.Y.Z.exe`, its `.blockmap`, and `latest.yml` from `dist-electron/` without renaming them (`latest.yml` refers to the exact file names)
 - Mark the release as **latest** so `electron-updater` picks it up
+- Each machine needs `%APPDATA%\Bare Bones Bankroll\config.env` — the installer never contains secrets
+
+## Data Migration (v1.12)
+
+Version 1.12 renames Deposit/Withdrawal to Purchase/Redemption, adds structured stakes to cash sessions, and adds indexes. Older data still displays correctly, but run the migration once against your database:
+
+```bash
+cd server
+npm run migrate:gold            # dry run — shows what would change
+npm run migrate:gold -- --apply # writes the changes
+```
+
+The dry run lists any cash-session names it could not turn into stakes; fix those by editing the session.
 
 ## API Routes
 
 | Prefix          | Description                          |
 | --------------- | ------------------------------------ |
-| `/api/auth`     | Sign-in, sign-up, sign-out, password reset |
+| `/api/auth`     | Sign-in, sign-up, sign-out, current user (`/me`), password reset |
 | `/api/user`     | Profile management                   |
 | `/api/session`  | CRUD poker sessions                  |
-| `/api/transaction` | Deposits, withdrawals, buy-ins, cash-outs |
+| `/api/transaction` | Purchases, redemptions, promos (buy-ins/cash-outs are managed by sessions) |
 | `/api/support`  | Submit and view support tickets      |
+| `/api/player-notes` | Notes on opponents               |

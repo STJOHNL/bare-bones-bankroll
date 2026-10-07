@@ -1,4 +1,6 @@
-export const SAVED_HANDS_STORAGE_KEY = 'randomizerSavedHands'
+import logger from './logger'
+
+const SAVED_HANDS_STORAGE_KEY = 'randomizerSavedHands'
 
 export const createSavedHand = ({ title, notes, details }) => ({
   id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -13,9 +15,10 @@ export const loadSavedHands = () => {
 
   try {
     const raw = window.localStorage.getItem(SAVED_HANDS_STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
+    const hands = raw ? JSON.parse(raw) : []
+    return Array.isArray(hands) ? hands : []
   } catch (error) {
-    console.error('Failed to load saved hands', error)
+    logger.error('Failed to load saved hands', error)
     return []
   }
 }
@@ -23,5 +26,9 @@ export const loadSavedHands = () => {
 export const saveSavedHands = hands => {
   if (typeof window === 'undefined') return
 
-  window.localStorage.setItem(SAVED_HANDS_STORAGE_KEY, JSON.stringify(hands))
+  try {
+    window.localStorage.setItem(SAVED_HANDS_STORAGE_KEY, JSON.stringify(hands))
+  } catch (error) {
+    logger.error('Failed to save hands', error)
+  }
 }

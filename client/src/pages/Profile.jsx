@@ -11,24 +11,8 @@ import { useBankrollContext } from '../context/BankrollContext'
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
 import UserForm from '../components/forms/UserForm'
-
-const parseCSVLine = line => {
-  const result = []
-  let current = ''
-  let inQuotes = false
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] === '"') {
-      inQuotes = !inQuotes
-    } else if (line[i] === ',' && !inQuotes) {
-      result.push(current.trim())
-      current = ''
-    } else {
-      current += line[i]
-    }
-  }
-  result.push(current.trim())
-  return result
-}
+// Utils
+import { SESSION_CSV_COLUMNS, parseCsvObjects } from '../utils/csv'
 
 const parseTimestamp = str => {
   if (!str) return null
@@ -36,84 +20,89 @@ const parseTimestamp = str => {
   const normalized = str.replace(/T(\d{1,2}):(\d{1,2}):(\d{1,2})/, (_, h, m, s) =>
     `T${h.padStart(2, '0')}:${m.padStart(2, '0')}:${s.padStart(2, '0')}`)
   const d = new Date(normalized)
-  return isNaN(d.getTime()) ? null : d
+  return isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+const number = str => (str === '' || str == null ? undefined : parseFloat(str))
+
+// Older exports used title-case headers ('Buy-in', 'Date'); map them onto the import columns
+const HEADER_ALIASES = { 'buy-in': 'buyin', 'cash-out': 'cashout', date: 'start' }
+
+const toSession = raw => {
+  const row = Object.fromEntries(Object.entries(raw).map(([k, v]) => [HEADER_ALIASES[k] || k, v]))
+  return {
+    venue: row.venue,
+    type: row.type,
+    game: row.game,
+    ...(row.name && { name: row.name }),
+    ...(number(row.sb) !== undefined && { sb: number(row.sb) }),
+    ...(number(row.bb) !== undefined && { bb: number(row.bb) }),
+    ...(number(row.hands) !== undefined && { hands: parseInt(row.hands, 10) }),
+    buyin: number(row.buyin) ?? 0,
+    cashout: number(row.cashout) ?? 0,
+    ...(parseTimestamp(row.start) && { start: parseTimestamp(row.start) }),
+    ...(parseTimestamp(row.end) && { end: parseTimestamp(row.end) }),
+    ...(row.notes && { notes: row.notes }),
+  }
 }
 
 const Profile = () => {
   const { getUser } = useUser()
   const { importSessions } = useSession()
-  const { setTransactions } = useBankrollContext()
+  const { refetchTransactions } = useBankrollContext()
   const { id } = useParams()
 
   const csvInputRef = useRef(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isImporting, setIsImporting] = useState(false)
   const [formUser, setFormUser] = useState()
 
   const handleCsvImport = async e => {
     const file = e.target.files[0]
+    e.target.value = ''
     if (!file) return
-    const text = await file.text()
-    const lines = text.trim().split('\n').filter(l => l.trim())
-    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase())
-    const validVenues = ['Online', 'Live']
-    const validTypes = ['Cash', 'Tournament']
-    const validGames = ['NL', 'PLO']
-    const sessions = []
-    const skipped = []
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i])
-      const row = {}
-      headers.forEach((h, idx) => { row[h] = values[idx] || '' })
+    const rows = parseCsvObjects(await file.text())
+    if (!rows.length) {
+      toast.error('That file has no rows to import')
+      return
+    }
 
-      if (!validVenues.includes(row.venue)) { skipped.push(i + 1); continue }
-      if (!validTypes.includes(row.type)) { skipped.push(i + 1); continue }
-      if (!validGames.includes(row.game)) { skipped.push(i + 1); continue }
+    // The server validates every row and reports the ones it skipped
+    setIsImporting(true)
+    const res = await importSessions(rows.map(toSession))
+    setIsImporting(false)
+    if (!res) return
 
-      sessions.push({
-        venue: row.venue,
-        type: row.type,
-        game: row.game,
-        ...(row.name && { name: row.name }),
-        ...(row.buyin && { buyin: parseFloat(row.buyin) }),
-        ...(row.cashout && { cashout: parseFloat(row.cashout) }),
-        ...(parseTimestamp(row.start) && { start: parseTimestamp(row.start) }),
-        ...(parseTimestamp(row.end) && { end: parseTimestamp(row.end) }),
-        ...(row.notes && { notes: row.notes })
+    if (res.imported) toast.success(`Imported ${res.imported} session(s)`)
+    if (res.skipped?.length) {
+      const preview = res.skipped
+        .slice(0, 3)
+        // `row` counts data rows from 1; the header makes it one more in the file
+        .map(s => `line ${s.row + 1}: ${s.reason}`)
+        .join('; ')
+      toast.error(`Skipped ${res.skipped.length} row(s) — ${preview}${res.skipped.length > 3 ? '…' : ''}`, {
+        duration: 8000,
       })
     }
-
-    if (skipped.length) toast.error(`Skipped ${skipped.length} invalid row(s)`)
-    if (sessions.length) {
-      const res = await importSessions(sessions)
-      if (res) {
-        toast.success(`Imported ${res.imported} session(s)`)
-        if (res.transactions?.length) setTransactions(prev => [...res.transactions, ...prev])
-      }
-    }
-    e.target.value = ''
+    if (res.imported) await refetchTransactions()
   }
 
   useEffect(() => {
-    const fetchUser = async (id) => {
+    const fetchUser = async () => {
       setIsLoading(true)
-      const res = await getUser(id)
-      setFormUser(res)
+      setFormUser(await getUser(id))
       setIsLoading(false)
     }
-    fetchUser(id)
-  }, [id])
+    fetchUser()
+  }, [id, getUser])
 
   // Conditional loader
   if (isLoading) return <Loader />
 
-  const initials = formUser
-    ? `${formUser.fName?.[0] || ''}${formUser.lName?.[0] || ''}`.toUpperCase()
-    : ''
+  const initials = formUser ? `${formUser.fName?.[0] || ''}${formUser.lName?.[0] || ''}`.toUpperCase() : ''
 
-  const fullName = formUser?.fName
-    ? `${formUser.fName} ${formUser.lName}`.trim()
-    : 'Profile'
+  const fullName = formUser?.fName ? `${formUser.fName} ${formUser.lName}`.trim() : 'Profile'
 
   return (
     <>
@@ -129,24 +118,29 @@ const Profile = () => {
         </div>
       )}
 
-      <div className='profile-card'>
-        <UserForm parentData={formUser} buttonText={'Save Changes'} />
-      </div>
+      {formUser && (
+        <div className='profile-card'>
+          <UserForm parentData={formUser} buttonText={'Save Changes'} onSubmitCallback={setFormUser} />
+        </div>
+      )}
 
       <div className='profile-card'>
         <h2>Import Sessions</h2>
-        <p className='profile-card__desc'>Bulk import past sessions from a CSV file.</p>
+        <p className='profile-card__desc'>
+          Bulk import past sessions from a CSV file. Files exported from History import as-is.
+        </p>
         <input
           ref={csvInputRef}
           type='file'
           accept='.csv'
           style={{ display: 'none' }}
           onChange={handleCsvImport}
+          aria-label='CSV file to import'
         />
-        <button className='import-zone' onClick={() => csvInputRef.current.click()}>
+        <button className='import-zone' onClick={() => csvInputRef.current.click()} disabled={isImporting}>
           <FaFileImport className='import-zone__icon' />
-          <span>Click to upload a CSV</span>
-          <span className='import-zone__hint'>venue, type, game, name, buyin, cashout, start, end, notes</span>
+          <span>{isImporting ? 'Importing…' : 'Click to upload a CSV'}</span>
+          <span className='import-zone__hint'>{SESSION_CSV_COLUMNS.join(', ')}</span>
         </button>
       </div>
     </>

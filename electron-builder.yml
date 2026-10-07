@@ -16,7 +16,11 @@ files:
   - "!server/node_modules/.cache"
   - "!server/node_modules/.bin"
   - "!**/*.test.js"
-  - "!**/.env.test"
+  # Never ship secrets — packaged builds read %APPDATA%\Bare Bones Bankroll\config.env
+  - "!**/.env"
+  - "!**/.env.*"
+  - "!**/config.env"
+  - "!server/scripts"
 
 win:
   target:
@@ -24,6 +28,9 @@ win:
   icon: client/public/ms-icon-310x310.png
 
 nsis:
+  # No spaces: GitHub renames spaces in uploaded assets, which would break the
+  # download URL that latest.yml gives the auto-updater
+  artifactName: Bare-Bones-Bankroll-Setup-${version}.${ext}
   oneClick: false
   allowToChangeInstallationDirectory: true
 

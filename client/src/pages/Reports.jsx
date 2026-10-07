@@ -1,143 +1,100 @@
 import { useState, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts'
 import { useSession } from '../hooks/useSession'
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
+import PLChart from '../components/PLChart'
+import StatGrid from '../components/StatGrid'
+import {
+  breakdownBy,
+  byDayOfWeek,
+  cumulativeSeries,
+  isCompleted,
+  sessionPL,
+  stakesBreakdown,
+  streaks as computeStreaks,
+  summarize,
+  topSessions as computeTopSessions,
+} from '../utils/stats'
+import { sessionLabel } from '../utils/stakes'
+import { formatMoney, formatPL, plColor } from '../utils/money'
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const formatBb100 = bb100 => (bb100 ? `${bb100.value >= 0 ? '+' : ''}${bb100.value.toFixed(1)}` : '—')
+
+const SessionsTable = ({ rows }) => (
+  <div className='table-responsive'>
+    <table>
+      <thead>
+        <tr>
+          <th scope='col'>Name</th>
+          <th scope='col'>Date</th>
+          <th scope='col'>Buy-in</th>
+          <th scope='col'>Cash-out</th>
+          <th scope='col'>Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(s => (
+          <tr key={s._id}>
+            <td data-label='Name'>{sessionLabel(s)}</td>
+            <td data-label='Date'>{s.start ? format(new Date(s.start), 'MM/dd/yy') : '—'}</td>
+            <td data-label='Buy-in'>{formatMoney(s.buyin)}</td>
+            <td data-label='Cash-out'>{formatMoney(s.cashout)}</td>
+            <td data-label='Profit' style={{ color: plColor(sessionPL(s)) }}>
+              {formatPL(sessionPL(s))}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)
 
 const Reports = () => {
   const { getSessions } = useSession()
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [sessions, setSessions] = useState([])
-  const [nameFilter, setNameFilter] = useState('')
+  const [labelFilter, setLabelFilter] = useState('All')
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchSessions = async () => {
       setIsLoading(true)
-      const res = await getSessions()
-      setSessions(res || [])
+      setSessions((await getSessions()) || [])
       setIsLoading(false)
     }
-    fetch()
-  }, [])
+    fetchSessions()
+  }, [getSessions])
 
-  const allCompleted = useMemo(() => sessions.filter(s => !!s.end), [sessions])
+  const allCompleted = useMemo(() => sessions.filter(isCompleted), [sessions])
 
-  // Distinct tournament names / cash stakes played, for the query datalist
-  const uniqueNames = useMemo(
-    () => Array.from(new Set(allCompleted.map(s => s.name).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
-    [allCompleted]
+  // Distinct stakes (cash) and tournament names, for the filter
+  const labels = useMemo(() => {
+    const cash = new Set()
+    const tournaments = new Set()
+    for (const s of allCompleted) (s.type === 'Cash' ? cash : tournaments).add(sessionLabel(s))
+    const byBb = (a, b) => parseFloat(a.replace(/^\D+/, '')) - parseFloat(b.replace(/^\D+/, '')) || a.localeCompare(b)
+    return { cash: [...cash].sort(byBb), tournaments: [...tournaments].sort((a, b) => a.localeCompare(b)) }
+  }, [allCompleted])
+
+  const completed = useMemo(
+    () => (labelFilter === 'All' ? allCompleted : allCompleted.filter(s => sessionLabel(s) === labelFilter)),
+    [allCompleted, labelFilter]
   )
 
-  const completed = useMemo(() => {
-    const q = nameFilter.trim().toLowerCase()
-    if (!q) return allCompleted
-    return allCompleted.filter(s => s.name?.toLowerCase().includes(q))
-  }, [allCompleted, nameFilter])
-
-  // ── All-time summary ──────────────────────────────────────────────────────
-  const summary = useMemo(() => {
-    return completed.reduce(
-      (acc, s) => {
-        const pl = (s.cashout ?? 0) - s.buyin
-        acc.totalPL += pl
-        acc.count += 1
-        if (pl > 0) acc.wins += 1
-        if (s.start && s.end) acc.totalMinutes += (new Date(s.end) - new Date(s.start)) / 60000
-        if (pl > acc.bestPL) { acc.bestPL = pl; acc.best = s }
-        if (pl < acc.worstPL) { acc.worstPL = pl; acc.worst = s }
-        return acc
-      },
-      { totalPL: 0, count: 0, wins: 0, totalMinutes: 0, bestPL: -Infinity, worstPL: Infinity, best: null, worst: null }
-    )
-  }, [completed])
-
-  const winRate = summary.count > 0 ? (summary.wins / summary.count) * 100 : 0
-  const avgPerSession = summary.count > 0 ? summary.totalPL / summary.count : 0
-  const hourlyRate = summary.totalMinutes > 0 ? summary.totalPL / (summary.totalMinutes / 60) : null
-  const totalHours = summary.totalMinutes / 60
-
-  // ── Breakdown by category ────────────────────────────────────────────────
-  const breakdown = useMemo(() => {
-    const compute = key => {
-      const map = {}
-      for (const s of completed) {
-        const k = s[key]
-        if (!map[k]) map[k] = { label: k, count: 0, pl: 0, wins: 0 }
-        const pl = (s.cashout ?? 0) - s.buyin
-        map[k].count += 1
-        map[k].pl += pl
-        if (pl > 0) map[k].wins += 1
-      }
-      return Object.values(map)
-    }
-    return {
-      venue: compute('venue'),
-      type: compute('type'),
-      game: compute('game'),
-    }
-  }, [completed])
-
-  // ── Streaks ───────────────────────────────────────────────────────────────
-  const streaks = useMemo(() => {
-    const sorted = [...completed].sort((a, b) => new Date(a.start) - new Date(b.start))
-    let currentStreak = 0, longestWin = 0, longestLoss = 0, cur = 0, curType = null
-    for (const s of sorted) {
-      const win = (s.cashout ?? 0) - s.buyin > 0
-      if (curType === null) { curType = win; cur = 1 }
-      else if (win === curType) { cur++ }
-      else { curType = win; cur = 1 }
-      if (win && cur > longestWin) longestWin = cur
-      if (!win && cur > longestLoss) longestLoss = cur
-    }
-    // current streak = last N sessions in same direction
-    if (sorted.length) {
-      const lastWin = (sorted[sorted.length - 1].cashout ?? 0) - sorted[sorted.length - 1].buyin > 0
-      let streak = 0
-      for (let i = sorted.length - 1; i >= 0; i--) {
-        const w = (sorted[i].cashout ?? 0) - sorted[i].buyin > 0
-        if (w === lastWin) streak++
-        else break
-      }
-      currentStreak = lastWin ? streak : -streak
-    }
-    return { currentStreak, longestWin, longestLoss }
-  }, [completed])
-
-  // ── By day of week ────────────────────────────────────────────────────────
-  const byDay = useMemo(() => {
-    const days = DAYS.map(d => ({ day: d, count: 0, pl: 0 }))
-    for (const s of completed) {
-      if (s.start) {
-        const d = new Date(s.start).getDay()
-        days[d].count += 1
-        days[d].pl += (s.cashout ?? 0) - s.buyin
-      }
-    }
-    return days
-  }, [completed])
-
-  // ── Top sessions ─────────────────────────────────────────────────────────
-  const topSessions = useMemo(() => {
-    const sorted = [...completed].sort((a, b) => ((b.cashout ?? 0) - b.buyin) - ((a.cashout ?? 0) - a.buyin))
-    return { best: sorted.slice(0, 3), worst: sorted.slice(-3).reverse() }
-  }, [completed])
-
-  // ── P/L chart data ───────────────────────────────────────────────────────
-  const plChartData = useMemo(() => {
-    let cumulative = 0
-    return [...completed]
-      .sort((a, b) => new Date(a.start) - new Date(b.start))
-      .map(s => {
-        cumulative += (s.cashout ?? 0) - s.buyin
-        return {
-          date: s.start ? format(new Date(s.start), 'MM/dd') : '',
-          pl: parseFloat(cumulative.toFixed(2)),
-        }
-      })
-  }, [completed])
+  const summary = useMemo(() => summarize(completed), [completed])
+  const plChartData = useMemo(() => cumulativeSeries(completed), [completed])
+  const stakes = useMemo(() => stakesBreakdown(completed), [completed])
+  const breakdown = useMemo(
+    () => ({
+      venue: breakdownBy(completed, s => s.venue),
+      type: breakdownBy(completed, s => s.type),
+      game: breakdownBy(completed, s => s.game),
+    }),
+    [completed]
+  )
+  const streaks = useMemo(() => computeStreaks(completed), [completed])
+  const byDay = useMemo(() => byDayOfWeek(completed), [completed])
+  const top = useMemo(() => computeTopSessions(completed), [completed])
 
   if (isLoading) return <Loader />
 
@@ -152,86 +109,102 @@ const Reports = () => {
         </div>
       ) : (
         <>
-          {/* Query by tournament name / cash stake */}
           <div className='filter-form' style={{ marginBottom: '1.5rem' }}>
             <div>
-              <label htmlFor='nameFilter'>Stake / Tournament</label>
-              <input
-                list='session-names'
-                type='text'
-                id='nameFilter'
-                value={nameFilter}
-                onChange={e => setNameFilter(e.target.value)}
-                placeholder='e.g. NL50, Sunday Million'
-              />
-              <datalist id='session-names'>
-                {uniqueNames.map(n => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
+              <label htmlFor='labelFilter'>Stakes / Tournament</label>
+              <select id='labelFilter' value={labelFilter} onChange={e => setLabelFilter(e.target.value)}>
+                <option value='All'>All sessions</option>
+                {labels.cash.length > 0 && (
+                  <optgroup label='Cash stakes'>
+                    {labels.cash.map(l => (
+                      <option key={l} value={l}>
+                        {l}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {labels.tournaments.length > 0 && (
+                  <optgroup label='Tournaments'>
+                    {labels.tournaments.map(l => (
+                      <option key={l} value={l}>
+                        {l}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
             </div>
-            {nameFilter && (
-              <button
-                type='button'
-                className='btn btn--subtle'
-                onClick={() => setNameFilter('')}>
+            {labelFilter !== 'All' && (
+              <button type='button' className='btn btn--subtle' onClick={() => setLabelFilter('All')}>
                 Clear
               </button>
             )}
           </div>
 
-          {completed.length === 0 ? (
-            <div className='empty-state'>
-              <span className='empty-state__title'>No matching sessions</span>
-              <span className='empty-state__desc'>No sessions found for &quot;{nameFilter}&quot;. Try a different stake or tournament name.</span>
-            </div>
-          ) : (
-          <>
-          {/* P/L Trend Chart */}
-          {plChartData.length > 1 && (
-            <div className='pl-chart' style={{ marginBottom: '2rem' }}>
-              <p className='pl-chart__title'>Cumulative P/L</p>
-              <ResponsiveContainer width='100%' height={220}>
-                <LineChart data={plChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                  <XAxis dataKey='date' tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis tickFormatter={v => `$${v}`} tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} tickLine={false} axisLine={false} width={60} />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--alt-background)', border: '1px solid #3a3a3a', borderRadius: 'var(--radius)', fontSize: '0.85rem' }}
-                    labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
-                    formatter={v => [`$${v.toFixed(2)}`, 'P/L']}
-                  />
-                  <ReferenceLine y={0} stroke='rgba(255,255,255,0.15)' strokeDasharray='4 4' />
-                  <Line
-                    type='monotone'
-                    dataKey='pl'
-                    stroke={plChartData[plChartData.length - 1]?.pl >= 0 ? 'var(--green)' : 'var(--red)'}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Summary Stats */}
-          <div className='stats' style={{ marginBottom: '2rem' }}>
-            {[
-              { label: 'Total P/L', value: `$${summary.totalPL.toFixed(2)}`, color: summary.totalPL >= 0 ? 'var(--green)' : 'var(--red)' },
-              { label: 'Sessions', value: summary.count },
-              { label: 'Win Rate', value: `${winRate.toFixed(1)}%` },
-              { label: 'Avg / Session', value: `$${avgPerSession.toFixed(2)}`, color: avgPerSession >= 0 ? 'var(--green)' : 'var(--red)' },
-              { label: 'Hourly Rate', value: hourlyRate !== null ? `$${hourlyRate.toFixed(2)}` : '—', color: hourlyRate !== null ? (hourlyRate >= 0 ? 'var(--green)' : 'var(--red)') : undefined },
-              { label: 'Total Hours', value: `${totalHours.toFixed(1)}h` },
-            ].map(({ label, value, color }) => (
-              <div className='stat' key={label}>
-                <p>{label}</p>
-                <span className='stat__value' style={{ color }}>{value}</span>
-              </div>
-            ))}
+          <div style={{ marginBottom: '2rem' }}>
+            <PLChart data={plChartData} />
           </div>
 
-          {/* Breakdown */}
+          <StatGrid
+            style={{ marginBottom: '2rem' }}
+            stats={[
+              { label: 'Total P/L', value: formatPL(summary.totalPL), color: plColor(summary.totalPL) },
+              { label: 'Sessions', value: summary.count },
+              { label: 'Win Rate', value: `${summary.winRate.toFixed(1)}%` },
+              { label: 'Avg / Session', value: formatPL(summary.avgPerSession), color: plColor(summary.avgPerSession) },
+              {
+                label: 'Hourly Rate',
+                value: summary.hourlyRate !== null ? formatPL(summary.hourlyRate) : '—',
+                color: summary.hourlyRate !== null ? plColor(summary.hourlyRate) : undefined,
+              },
+              { label: 'Hours Played', value: `${summary.hours.toFixed(1)}h`, hint: 'overlapping tables count once' },
+              ...(summary.bb100
+                ? [
+                    {
+                      label: 'bb/100',
+                      value: formatBb100(summary.bb100),
+                      color: plColor(summary.bb100.value),
+                      hint: `${summary.bb100.hands.toLocaleString()} hands`,
+                    },
+                  ]
+                : []),
+            ]}
+          />
+
+          {stakes.length > 0 && (
+            <>
+              <h2 style={{ marginBottom: '0.75rem' }}>By Stakes</h2>
+              <div className='table-responsive' style={{ marginBottom: '2rem' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope='col'>Stakes</th>
+                      <th scope='col'>Sessions</th>
+                      <th scope='col'>P/L</th>
+                      <th scope='col'>Hourly</th>
+                      <th scope='col'>bb/100</th>
+                      <th scope='col'>Win %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stakes.map(r => (
+                      <tr key={r.label}>
+                        <td data-label='Stakes'>{r.label}</td>
+                        <td data-label='Sessions'>{r.count}</td>
+                        <td data-label='P/L' style={{ color: plColor(r.totalPL) }}>
+                          {formatPL(r.totalPL)}
+                        </td>
+                        <td data-label='Hourly'>{r.hourlyRate !== null ? formatPL(r.hourlyRate) : '—'}</td>
+                        <td data-label='bb/100'>{formatBb100(r.bb100)}</td>
+                        <td data-label='Win %'>{r.winRate.toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
           <h2 style={{ marginBottom: '0.75rem' }}>Breakdown</h2>
           <div className='reports-breakdowns'>
             {[
@@ -244,7 +217,9 @@ const Reports = () => {
                 <table>
                   <thead>
                     <tr>
-                      <th scope='col'></th>
+                      <th scope='col'>
+                        <span className='visually-hidden'>Group</span>
+                      </th>
                       <th scope='col'>Sessions</th>
                       <th scope='col'>P/L</th>
                       <th scope='col'>Win %</th>
@@ -255,10 +230,10 @@ const Reports = () => {
                       <tr key={r.label}>
                         <td data-label=''>{r.label}</td>
                         <td data-label='Sessions'>{r.count}</td>
-                        <td data-label='P/L' style={{ color: r.pl >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                          ${r.pl.toFixed(2)}
+                        <td data-label='P/L' style={{ color: plColor(r.totalPL) }}>
+                          {formatPL(r.totalPL)}
                         </td>
-                        <td data-label='Win %'>{r.count > 0 ? ((r.wins / r.count) * 100).toFixed(1) : 0}%</td>
+                        <td data-label='Win %'>{r.winRate.toFixed(1)}%</td>
                       </tr>
                     ))}
                   </tbody>
@@ -267,104 +242,50 @@ const Reports = () => {
             ))}
           </div>
 
-          {/* Streaks */}
           <h2 style={{ margin: '2rem 0 0.75rem' }}>Streaks</h2>
-          <div className='stats'>
-            <div className='stat'>
-              <p>Current</p>
-              <span className='stat__value' style={{ color: streaks.currentStreak >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                {streaks.currentStreak > 0 ? `+${streaks.currentStreak}W` : streaks.currentStreak < 0 ? `${Math.abs(streaks.currentStreak)}L` : '—'}
-              </span>
-            </div>
-            <div className='stat'>
-              <p>Longest Win Streak</p>
-              <span className='stat__value' style={{ color: 'var(--green)' }}>{streaks.longestWin}W</span>
-            </div>
-            <div className='stat'>
-              <p>Longest Loss Streak</p>
-              <span className='stat__value' style={{ color: 'var(--red)' }}>{streaks.longestLoss}L</span>
-            </div>
-          </div>
+          <StatGrid
+            stats={[
+              {
+                label: 'Current',
+                value: streaks.current > 0 ? `${streaks.current}W` : streaks.current < 0 ? `${-streaks.current}L` : '—',
+                color: plColor(streaks.current),
+              },
+              { label: 'Longest Win Streak', value: `${streaks.longestWin}W`, color: 'var(--green)' },
+              { label: 'Longest Loss Streak', value: `${streaks.longestLoss}L`, color: 'var(--red)' },
+            ]}
+          />
 
-          {/* By Day of Week */}
           <h2 style={{ margin: '2rem 0 0.75rem' }}>By Day of Week</h2>
           <div className='table-responsive'>
-          <table>
-            <thead>
-              <tr>
-                <th scope='col'>Day</th>
-                <th scope='col'>Sessions</th>
-                <th scope='col'>P/L</th>
-              </tr>
-            </thead>
-            <tbody>
-              {byDay.filter(d => d.count > 0).map(d => (
-                <tr key={d.day}>
-                  <td data-label='Day'>{d.day}</td>
-                  <td data-label='Sessions'>{d.count}</td>
-                  <td data-label='P/L' style={{ color: d.pl >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                    ${d.pl.toFixed(2)}
-                  </td>
+            <table>
+              <thead>
+                <tr>
+                  <th scope='col'>Day</th>
+                  <th scope='col'>Sessions</th>
+                  <th scope='col'>P/L</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {byDay
+                  .filter(d => d.count > 0)
+                  .map(d => (
+                    <tr key={d.day}>
+                      <td data-label='Day'>{d.day}</td>
+                      <td data-label='Sessions'>{d.count}</td>
+                      <td data-label='P/L' style={{ color: plColor(d.pl) }}>
+                        {formatPL(d.pl)}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
           </div>
 
-          {/* Top Sessions */}
           <h2 style={{ margin: '2rem 0 0.75rem' }}>Best Sessions</h2>
-          <div className='table-responsive'>
-          <table>
-            <thead>
-              <tr>
-                <th scope='col'>Name</th>
-                <th scope='col'>Date</th>
-                <th scope='col'>Buy-in</th>
-                <th scope='col'>Cash-out</th>
-                <th scope='col'>Profit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topSessions.best.map(s => (
-                <tr key={s._id}>
-                  <td data-label='Name'>{s.name}</td>
-                  <td data-label='Date'>{s.start ? format(new Date(s.start), 'MM/dd/yy') : '—'}</td>
-                  <td data-label='Buy-in'>${s.buyin}</td>
-                  <td data-label='Cash-out'>${s.cashout}</td>
-                  <td data-label='Profit' style={{ color: 'var(--green)' }}>+${((s.cashout ?? 0) - s.buyin).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+          {top.best.length ? <SessionsTable rows={top.best} /> : <p className='form-hint'>No winning sessions yet.</p>}
 
           <h2 style={{ margin: '2rem 0 0.75rem' }}>Worst Sessions</h2>
-          <div className='table-responsive'>
-          <table>
-            <thead>
-              <tr>
-                <th scope='col'>Name</th>
-                <th scope='col'>Date</th>
-                <th scope='col'>Buy-in</th>
-                <th scope='col'>Cash-out</th>
-                <th scope='col'>Profit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topSessions.worst.map(s => (
-                <tr key={s._id}>
-                  <td data-label='Name'>{s.name}</td>
-                  <td data-label='Date'>{s.start ? format(new Date(s.start), 'MM/dd/yy') : '—'}</td>
-                  <td data-label='Buy-in'>${s.buyin}</td>
-                  <td data-label='Cash-out'>${s.cashout}</td>
-                  <td data-label='Profit' style={{ color: 'var(--red)' }}>${((s.cashout ?? 0) - s.buyin).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-          </>
-          )}
+          {top.worst.length ? <SessionsTable rows={top.worst} /> : <p className='form-hint'>No losing sessions yet.</p>}
         </>
       )}
     </>

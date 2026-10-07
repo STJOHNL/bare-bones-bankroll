@@ -1,57 +1,41 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { useApi } from '../hooks/useApi'
 import { useUserContext } from './UserContext'
+import { computeBankroll, normalizeTransaction } from '../utils/bankroll'
 
 const BankrollContext = createContext()
 
 export const BankrollProvider = ({ children }) => {
   const { get } = useApi()
   const { user } = useUserContext()
-  const [transactions, setTransactions] = useState([])
+  const [rawTransactions, setTransactions] = useState([])
   const [isLoading, setIsLoading] = useState(false)
 
-  const fetchTransactions = async () => {
+  const refetchTransactions = useCallback(async () => {
     setIsLoading(true)
     const data = await get('/transaction')
-    setTransactions(data || [])
+    if (data) setTransactions(data)
     setIsLoading(false)
-  }
+  }, [get])
 
   useEffect(() => {
     if (!user) {
       setTransactions([])
       return
     }
-    fetchTransactions()
-  }, [user])
+    refetchTransactions()
+  }, [user, refetchTransactions])
 
-  const deposits = transactions
-    .filter(t => t.type === 'Deposit')
-    .reduce((sum, t) => sum + t.amount, 0)
+  // Legacy Deposit/Withdrawal rows are presented as Purchase/Redemption
+  const transactions = useMemo(() => rawTransactions.map(normalizeTransaction), [rawTransactions])
+  const summary = useMemo(() => computeBankroll(transactions), [transactions])
 
-  const withdrawals = transactions
-    .filter(t => t.type === 'Withdrawal')
-    .reduce((sum, t) => sum + t.amount, 0)
-
-  const cashouts = transactions
-    .filter(t => t.type === 'Cash-out')
-    .reduce((sum, t) => sum + t.amount, 0)
-
-  const buyins = transactions
-    .filter(t => t.type === 'Buy-in')
-    .reduce((sum, t) => sum + t.amount, 0)
-
-  const promos = transactions
-    .filter(t => t.type === 'Promo')
-    .reduce((sum, t) => sum + t.amount, 0)
-
-  const balance = deposits + cashouts + promos - withdrawals - buyins
-
-  return (
-    <BankrollContext.Provider value={{ transactions, setTransactions, balance, isLoading, refetchTransactions: fetchTransactions }}>
-      {children}
-    </BankrollContext.Provider>
+  const value = useMemo(
+    () => ({ transactions, setTransactions, summary, balance: summary.balance, isLoading, refetchTransactions }),
+    [transactions, summary, isLoading, refetchTransactions]
   )
+
+  return <BankrollContext.Provider value={value}>{children}</BankrollContext.Provider>
 }
 
 export const useBankrollContext = () => {

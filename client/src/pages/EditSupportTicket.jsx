@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 // Custom Hooks
 import { useSupport } from '../hooks/useSupport'
-
 // Components
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
@@ -13,39 +12,36 @@ const EditSupportTicket = () => {
   const navigate = useNavigate()
   const { getSupportTicket } = useSupport()
 
-  const [isLoading, setIsLoading] = useState(false)
+  // Start in the loading state so the form never mounts with empty fields
+  const [isLoading, setIsLoading] = useState(true)
   const [supportTicket, setSupportTicket] = useState()
 
-  // Data fetch
   useEffect(() => {
-    const fetchSupportTicket = async (id) => {
+    const fetchSupportTicket = async () => {
       setIsLoading(true)
-
-      let res = await getSupportTicket(id)
-      setSupportTicket(res)
-
+      setSupportTicket(await getSupportTicket(id))
       setIsLoading(false)
     }
+    fetchSupportTicket()
+  }, [id, getSupportTicket])
 
-    fetchSupportTicket(id)
-  }, [])
-
-  const handleSubmit = async (e) => {
-    navigate('/support-tickets')
-  }
-
-  // Conditional loader
   if (isLoading) return <Loader />
 
   return (
     <>
       <PageTitle title={'Update Support Ticket'} />
-      <SupportForm
-        parentData={supportTicket}
-        showStatus={true}
-        buttonText={'Save Changes'}
-        onSubmitCallback={handleSubmit}
-      />
+      {supportTicket ? (
+        <SupportForm
+          parentData={supportTicket}
+          showStatus
+          buttonText={'Save Changes'}
+          onSubmitCallback={() => navigate('/support-tickets')}
+        />
+      ) : (
+        <div className='empty-state'>
+          <span className='empty-state__title'>Ticket not found</span>
+        </div>
+      )}
     </>
   )
 }

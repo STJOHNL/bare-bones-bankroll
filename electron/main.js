@@ -1,41 +1,48 @@
 'use strict'
 
-const { app, BrowserWindow, ipcMain, session, dialog } = require('electron')
+const { app, BrowserWindow, dialog, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { autoUpdater } = require('electron-updater')
 
 const PORT = 5000
+const HOST = '127.0.0.1'
+const ORIGIN = `http://${HOST}:${PORT}`
 
-// ─── Token storage ────────────────────────────────────────────────────────────
-// Simple JSON file in the OS user-data folder — no extra dependencies.
+// ─── Configuration ────────────────────────────────────────────────────────────
+// Packaged builds never ship server secrets. The server's environment file is
+// read from the user-data folder instead (e.g. %APPDATA%\Bare Bones Bankroll\config.env).
+// In development the server falls back to server/config/.env as usual.
 
-function tokenFilePath() {
-  return path.join(app.getPath('userData'), 'session.json')
+function configFilePath() {
+  return path.join(app.getPath('userData'), 'config.env')
 }
 
-function readToken() {
-  try {
-    const raw = fs.readFileSync(tokenFilePath(), 'utf8')
-    return JSON.parse(raw).token || null
-  } catch {
-    return null
+function ensureConfig() {
+  if (!app.isPackaged) return true
+
+  const configPath = configFilePath()
+  if (fs.existsSync(configPath)) {
+    process.env.BBB_ENV_PATH = configPath
+    return true
   }
+
+  dialog.showErrorBox(
+    'Configuration required',
+    `Bare Bones Bankroll needs a configuration file before it can start.\n\n` +
+      `Create this file:\n${configPath}\n\n` +
+      `with the same keys as server/config/.env (MONGO_URL, JWT_SECRET, SENDGRID_API_KEY, FROM_EMAIL, ADMIN_EMAIL, CLIENT_URL), then reopen the app.`
+  )
+  return false
 }
 
-function writeToken(token) {
-  fs.writeFileSync(tokenFilePath(), JSON.stringify({ token }), 'utf8')
+// Earlier versions stored the JWT in plain text in session.json. Auth now lives
+// only in the httpOnly cookie (persisted by Electron's cookie store), so remove it.
+function removeLegacyTokenFile() {
+  try {
+    fs.unlinkSync(path.join(app.getPath('userData'), 'session.json'))
+  } catch {}
 }
-
-function clearToken() {
-  try { fs.unlinkSync(tokenFilePath()) } catch {}
-}
-
-// ─── IPC handlers (called from preload bridge) ────────────────────────────────
-
-ipcMain.handle('get-token', () => readToken())
-ipcMain.on('set-token', (_, token) => writeToken(token))
-ipcMain.on('clear-token', () => clearToken())
 
 // ─── Express server startup ───────────────────────────────────────────────────
 
@@ -54,10 +61,12 @@ async function startServer() {
   process.env.NODE_ENV = process.env.NODE_ENV || 'production'
 
   // Dynamic import works across the CJS/ESM boundary.
-  const { app: expressApp } = await import('../server/server.js')
+  const { app: expressApp, dbReady } = await import('../server/server.js')
+  await dbReady
 
+  // Bind to loopback only so the API is never reachable from the local network.
   return new Promise((resolve, reject) => {
-    expressApp.listen(PORT, resolve).on('error', reject)
+    expressApp.listen(PORT, HOST, resolve).on('error', reject)
   })
 }
 
@@ -65,22 +74,22 @@ async function startServer() {
 
 let mainWindow
 
-async function createWindow() {
-  const token = readToken()
-
-  // Pre-seed the auth cookie so the Express `protect` middleware accepts API
-  // requests immediately — before React has mounted and called setToken via IPC.
-  if (token) {
-    await session.defaultSession.cookies.set({
-      url: `http://localhost:${PORT}`,
-      name: 'token',
-      value: token,
-      httpOnly: true,
-      secure: false, // Electron serves over plain http://localhost
-      sameSite: 'strict',
-    })
+function isAppUrl(url) {
+  try {
+    return new URL(url).origin === ORIGIN
+  } catch {
+    return false
   }
+}
 
+function openExternally(url) {
+  try {
+    const { protocol } = new URL(url)
+    if (protocol === 'https:' || protocol === 'http:') shell.openExternal(url)
+  } catch {}
+}
+
+function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 900,
@@ -88,7 +97,20 @@ async function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
+  })
+
+  // Links to other sites (e.g. GitHub releases) open in the system browser,
+  // never in an app window that could reach the local API.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternally(url)
+    return { action: 'deny' }
+  })
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (isAppUrl(url)) return
+    event.preventDefault()
+    openExternally(url)
   })
 
   // Open DevTools in development
@@ -96,18 +118,18 @@ async function createWindow() {
     mainWindow.webContents.openDevTools()
   }
 
-  const startPath = token ? '/dashboard' : '/'
-  mainWindow.loadURL(`http://localhost:${PORT}${startPath}`)
+  // The client redirects to sign-in when there is no valid auth cookie.
+  mainWindow.loadURL(`${ORIGIN}/dashboard`)
 }
-
-// ─── App lifecycle ────────────────────────────────────────────────────────────
 
 // ─── Auto-updater ─────────────────────────────────────────────────────────────
 
 function initAutoUpdater() {
   if (!app.isPackaged) return
 
-  autoUpdater.checkForUpdatesAndNotify()
+  autoUpdater.on('error', error => {
+    console.error('Auto-update failed:', error)
+  })
 
   autoUpdater.on('update-available', () => {
     dialog.showMessageBox(mainWindow, {
@@ -118,22 +140,46 @@ function initAutoUpdater() {
   })
 
   autoUpdater.on('update-downloaded', () => {
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'Update Ready',
-      message: 'Update downloaded. The app will restart to apply the update.',
-      buttons: ['Restart Now', 'Later'],
-    }).then(({ response }) => {
-      if (response === 0) autoUpdater.quitAndInstall()
-    })
+    dialog
+      .showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Update Ready',
+        message: 'Update downloaded. The app will restart to apply the update.',
+        buttons: ['Restart Now', 'Later'],
+      })
+      .then(({ response }) => {
+        if (response === 0) autoUpdater.quitAndInstall()
+      })
+  })
+
+  // Listeners are attached first; our own dialogs replace the default notification.
+  autoUpdater.checkForUpdates().catch(error => {
+    console.error('Update check failed:', error)
   })
 }
 
 // ─── App lifecycle ────────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
-  await startServer()
-  await createWindow()
+  removeLegacyTokenFile()
+
+  if (!ensureConfig()) {
+    app.quit()
+    return
+  }
+
+  try {
+    await startServer()
+  } catch (error) {
+    dialog.showErrorBox(
+      'Unable to start',
+      `Bare Bones Bankroll could not start its local server.\n\n${error?.message || error}`
+    )
+    app.quit()
+    return
+  }
+
+  createWindow()
   initAutoUpdater()
 
   app.on('activate', () => {

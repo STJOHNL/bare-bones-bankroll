@@ -2,16 +2,21 @@
  * One-time migration: backfill the `user` field on all Session and Transaction
  * documents that were created before user-scoping was added.
  *
- * Usage (from the server/ directory):
- *   node scripts/migrateUserField.js
- *
- * If you have multiple users and want to assign to a specific one:
+ * Usage (from the server/ directory) — USER_EMAIL is required so documents are
+ * never silently assigned to the wrong account:
  *   USER_EMAIL=you@example.com node scripts/migrateUserField.js
  */
+/* eslint-disable no-console */
 import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 
-dotenv.config({ path: './config/.env' })
+dotenv.config({ path: process.env.BBB_ENV_PATH || './config/.env' })
+
+const userEmail = process.env.USER_EMAIL
+if (!userEmail) {
+  console.error('USER_EMAIL is not set. Run: USER_EMAIL=you@example.com node scripts/migrateUserField.js')
+  process.exit(1)
+}
 
 const MONGO_URL = process.env.MONGO_URL
 if (!MONGO_URL) {
@@ -25,12 +30,10 @@ console.log('Connected to MongoDB')
 const db = mongoose.connection.db
 
 // Find target user
-const userEmail = process.env.USER_EMAIL
-const userQuery = userEmail ? { email: userEmail } : {}
-const user = await db.collection('users').findOne(userQuery, { sort: { createdAt: 1 } })
+const user = await db.collection('users').findOne({ email: userEmail.toLowerCase() })
 
 if (!user) {
-  console.error('No user found. Sign up first, then re-run this script.')
+  console.error(`No user found with email ${userEmail}. Sign up first, then re-run this script.`)
   await mongoose.disconnect()
   process.exit(1)
 }

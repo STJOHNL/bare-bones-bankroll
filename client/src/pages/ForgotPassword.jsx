@@ -11,24 +11,25 @@ const ForgotPassword = () => {
   const { forgotPassword } = useAuth()
 
   const [email, setEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async e => {
     e.preventDefault()
 
-    const res = await forgotPassword({ email: email })
+    setIsSubmitting(true)
+    const res = await forgotPassword({ email })
+    setIsSubmitting(false)
 
     if (res) {
-      toast.success(`Email sent to ${email}`)
-      navigate('/')
+      // The server responds the same way whether or not the account exists
+      toast.success(res.message || 'Check your email for a reset link', { duration: 6000 })
+      navigate('/sign-in')
     }
   }
 
   return (
     <>
-      <PageTitle
-        title={'Forgot password'}
-        hideTitle
-      />
+      <PageTitle title={'Forgot password'} hideTitle />
       <form onSubmit={handleSubmit}>
         <h1 className='heading-lg'>Forgot password</h1>
         <label htmlFor='email'>Email</label>
@@ -37,12 +38,17 @@ const ForgotPassword = () => {
           name='email'
           id='email'
           placeholder='Email'
+          autoComplete='email'
           value={email}
           onChange={e => setEmail(e.target.value)}
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           required
         />
-        <button type='submit'>Send password reset</button>
+        <button type='submit' disabled={isSubmitting} className={isSubmitting ? 'is-loading' : ''}>
+          {isSubmitting && <span className='btn-spinner' aria-hidden='true' />}
+          {isSubmitting ? 'Sending…' : 'Send password reset'}
+        </button>
       </form>
       <div className='auth-links'>
         <Link to='/sign-in'>Return to sign in</Link>

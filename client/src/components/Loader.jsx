@@ -1,11 +1,11 @@
 // Assets
-import LoadingGif from '../assets/catBoxLoader.gif'
+import LoadingImage from '../assets/catBoxLoader.webp'
 
 const Loader = () => {
   return (
-    <div className='loader'>
+    <div className='loader' role='status'>
       <div className='loader__image'>
-        <img src={LoadingGif} alt='Loading...' className='loader__image' />
+        <img src={LoadingImage} alt='Loading…' className='loader__image' />
       </div>
     </div>
   )

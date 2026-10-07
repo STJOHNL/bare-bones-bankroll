@@ -6,19 +6,19 @@ import { useUserContext } from '../context/UserContext'
 // Custom Hooks
 import { useAuth } from '../hooks/useAuth'
 // Components
-import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
 
 const SignIn = () => {
   const { signIn } = useAuth()
-  const { setToken, user } = useUserContext()
+  const { user } = useUserContext()
   const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
   })
 
+  // Signing in sets the user, which sends us to the dashboard
   useEffect(() => {
     if (user) {
       navigate('/dashboard')
@@ -29,39 +29,21 @@ const SignIn = () => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }))
   }
 
   const handleSubmit = async e => {
     e.preventDefault()
-    setIsLoading(true)
-
-    try {
-      const res = await signIn(formData)
-      if (res?.token) {
-        toast.success('Welcome!')
-        setToken(res.token)
-        setTimeout(() => {
-          // Small delay to ensure toast is visible
-          navigate('/dashboard')
-        }, 100)
-      }
-    } catch (error) {
-      // Error toasts are handled in useApi
-    } finally {
-      setIsLoading(false)
-    }
+    setIsSubmitting(true)
+    const res = await signIn(formData)
+    setIsSubmitting(false)
+    if (res?.user) toast.success('Welcome!')
   }
-
-  if (isLoading) return <Loader />
 
   return (
     <>
-      <PageTitle
-        title='Sign in'
-        hideTitle={true}
-      />
+      <PageTitle title='Sign in' hideTitle={true} />
       <form onSubmit={handleSubmit}>
         <h1 className='heading-lg'>Welcome!</h1>
         <label htmlFor='email'>Email</label>
@@ -70,9 +52,11 @@ const SignIn = () => {
           name='email'
           id='email'
           placeholder='name@email.com'
+          autoComplete='email'
           onChange={handleChange}
           value={formData.email}
           required
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
         />
 
@@ -82,15 +66,15 @@ const SignIn = () => {
           name='password'
           id='password'
           placeholder='Password'
+          autoComplete='current-password'
           onChange={handleChange}
           value={formData.password}
           required
         />
 
-        <button
-          type='submit'
-          disabled={isLoading}>
-          Sign in
+        <button type='submit' disabled={isSubmitting} className={isSubmitting ? 'is-loading' : ''}>
+          {isSubmitting && <span className='btn-spinner' aria-hidden='true' />}
+          {isSubmitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
 

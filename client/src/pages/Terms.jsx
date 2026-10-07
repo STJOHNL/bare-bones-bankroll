@@ -11,7 +11,7 @@ const Terms = () => {
 
         <h2>1. Acceptance of Terms</h2>
         <p>
-          By accessing or using Bankroll ("the Service"), you agree to be bound by these Terms of Service.
+          By accessing or using Bankroll (&quot;the Service&quot;), you agree to be bound by these Terms of Service.
           If you do not agree to these terms, please do not use the Service.
         </p>
 
@@ -54,7 +54,7 @@ const Terms = () => {
 
         <h2>7. Limitation of Liability</h2>
         <p>
-          Bankroll is provided "as is" without warranties of any kind, express or implied. We are not
+          Bankroll is provided &quot;as is&quot; without warranties of any kind, express or implied. We are not
           liable for any indirect, incidental, or consequential damages arising from your use of the
           Service, including any financial decisions made based on data tracked within the app.
         </p>
