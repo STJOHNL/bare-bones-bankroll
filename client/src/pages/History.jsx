@@ -12,7 +12,6 @@ import PageTitle from '../components/PageTitle'
 import ConfirmModal from '../components/ConfirmModal'
 // Utils
 import { isCompleted, sessionPL } from '../utils/stats'
-import { sessionLabel, sessionStakes } from '../utils/stakes'
 import { inDateRange } from '../utils/dates'
 import { SESSION_CSV_COLUMNS, downloadCsv, toCsv } from '../utils/csv'
 import { formatMoney, formatPL, plColor } from '../utils/money'
@@ -20,7 +19,7 @@ import { formatMoney, formatPL, plColor } from '../utils/money'
 const PAGE_SIZE = 20
 
 const SORT_COLUMNS = [
-  { key: 'name', label: 'Name', accessor: s => sessionLabel(s).toLowerCase() },
+  { key: 'name', label: 'Name', accessor: s => s.name?.toLowerCase() || '' },
   { key: 'venue', label: 'Venue', accessor: s => s.venue?.toLowerCase() || '' },
   { key: 'type', label: 'Type', accessor: s => s.type?.toLowerCase() || '' },
   { key: 'game', label: 'Game', accessor: s => s.game?.toLowerCase() || '' },
@@ -43,7 +42,7 @@ const History = () => {
   const [sessions, setSessions] = useState([])
   const [deleteTarget, setDeleteTarget] = useState(null)
 
-  // Inline tournament-name editing (cash names come from their stakes)
+  // Inline name editing
   const [editingId, setEditingId] = useState(null)
   const [editingName, setEditingName] = useState('')
   const nameInputRef = useRef(null)
@@ -58,7 +57,6 @@ const History = () => {
   const [filterType, setFilterType] = useState(() => searchParams.get('type') || 'All')
   const [filterVenue, setFilterVenue] = useState(() => searchParams.get('venue') || 'All')
   const [filterGame, setFilterGame] = useState(() => searchParams.get('game') || 'All')
-  const [filterStakes, setFilterStakes] = useState(() => searchParams.get('stakes') || 'All')
   const [filterFrom, setFilterFrom] = useState(() => searchParams.get('from') || '')
   const [filterTo, setFilterTo] = useState(() => searchParams.get('to') || '')
   const [filterBuyinMin, setFilterBuyinMin] = useState(() => searchParams.get('buyinMin') || '')
@@ -84,7 +82,6 @@ const History = () => {
     if (filterType !== 'All') next.type = filterType
     if (filterVenue !== 'All') next.venue = filterVenue
     if (filterGame !== 'All') next.game = filterGame
-    if (filterStakes !== 'All') next.stakes = filterStakes
     if (filterFrom) next.from = filterFrom
     if (filterTo) next.to = filterTo
     if (filterBuyinMin) next.buyinMin = filterBuyinMin
@@ -93,7 +90,7 @@ const History = () => {
     if (sortDir !== 'desc') next.dir = sortDir
     if (page !== 1) next.page = String(page)
     setSearchParams(next, { replace: true })
-  }, [query, filterType, filterVenue, filterGame, filterStakes, filterFrom, filterTo, filterBuyinMin, filterBuyinMax, sortField, sortDir, page, setSearchParams])
+  }, [query, filterType, filterVenue, filterGame, filterFrom, filterTo, filterBuyinMin, filterBuyinMax, sortField, sortDir, page, setSearchParams])
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -113,20 +110,11 @@ const History = () => {
 
   const allCompleted = useMemo(() => sessions.filter(isCompleted), [sessions])
 
-  const stakeOptions = useMemo(
-    () =>
-      [...new Set(allCompleted.filter(s => sessionStakes(s)).map(sessionLabel))].sort(
-        (a, b) => parseFloat(a.replace(/^\D+/, '')) - parseFloat(b.replace(/^\D+/, '')) || a.localeCompare(b)
-      ),
-    [allCompleted]
-  )
-
   const hasActiveFilters =
     query ||
     filterType !== 'All' ||
     filterVenue !== 'All' ||
     filterGame !== 'All' ||
-    filterStakes !== 'All' ||
     filterFrom ||
     filterTo ||
     filterBuyinMin ||
@@ -137,7 +125,6 @@ const History = () => {
     setFilterType('All')
     setFilterVenue('All')
     setFilterGame('All')
-    setFilterStakes('All')
     setFilterFrom('')
     setFilterTo('')
     setFilterBuyinMin('')
@@ -152,11 +139,10 @@ const History = () => {
     const { accessor } = sortColumn(sortField)
     return allCompleted
       .filter(s => {
-        if (q && !`${sessionLabel(s)} ${s.notes || ''}`.toLowerCase().includes(q)) return false
+        if (q && !`${s.name} ${s.notes || ''}`.toLowerCase().includes(q)) return false
         if (filterType !== 'All' && s.type !== filterType) return false
         if (filterVenue !== 'All' && s.venue !== filterVenue) return false
         if (filterGame !== 'All' && s.game !== filterGame) return false
-        if (filterStakes !== 'All' && (!sessionStakes(s) || sessionLabel(s) !== filterStakes)) return false
         if (!inDateRange(s.start, filterFrom, filterTo)) return false
         if (!Number.isNaN(buyinMin) && s.buyin < buyinMin) return false
         if (!Number.isNaN(buyinMax) && s.buyin > buyinMax) return false
@@ -168,7 +154,7 @@ const History = () => {
         const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv
         return sortDir === 'asc' ? cmp : -cmp
       })
-  }, [allCompleted, query, filterType, filterVenue, filterGame, filterStakes, filterFrom, filterTo, filterBuyinMin, filterBuyinMax, sortField, sortDir])
+  }, [allCompleted, query, filterType, filterVenue, filterGame, filterFrom, filterTo, filterBuyinMin, filterBuyinMax, sortField, sortDir])
 
   const totalPL = useMemo(() => filteredSessions.reduce((sum, s) => sum + sessionPL(s), 0), [filteredSessions])
   const count = filteredSessions.length
@@ -216,24 +202,18 @@ const History = () => {
   const exportCsv = useCallback(() => {
     // Same columns the Profile importer reads, plus a computed profit column
     const headers = [...SESSION_CSV_COLUMNS, 'profit']
-    const rows = filteredSessions.map(s => {
-      const stakes = sessionStakes(s)
-      return [
-        s.venue,
-        s.type,
-        s.game,
-        sessionLabel(s),
-        stakes?.sb ?? '',
-        stakes?.bb ?? '',
-        s.hands ?? '',
-        s.buyin ?? 0,
-        s.cashout ?? 0,
-        s.start ? new Date(s.start).toISOString() : '',
-        s.end ? new Date(s.end).toISOString() : '',
-        s.notes || '',
-        sessionPL(s).toFixed(2),
-      ]
-    })
+    const rows = filteredSessions.map(s => [
+      s.venue,
+      s.type,
+      s.game,
+      s.name || '',
+      s.buyin ?? 0,
+      s.cashout ?? 0,
+      s.start ? new Date(s.start).toISOString() : '',
+      s.end ? new Date(s.end).toISOString() : '',
+      s.notes || '',
+      sessionPL(s).toFixed(2),
+    ])
     downloadCsv(`sessions-${format(new Date(), 'yyyy-MM-dd')}.csv`, toCsv(headers, rows))
   }, [filteredSessions])
 
@@ -279,17 +259,6 @@ const History = () => {
                 <option value='All'>All</option>
                 <option value='Cash'>Cash</option>
                 <option value='Tournament'>Tournament</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor='filterStakes'>Stakes</label>
-              <select id='filterStakes' value={filterStakes} onChange={onFilter(setFilterStakes)}>
-                <option value='All'>All</option>
-                {stakeOptions.map(label => (
-                  <option key={label} value={label}>
-                    {label}
-                  </option>
-                ))}
               </select>
             </div>
             <div>
@@ -381,7 +350,7 @@ const History = () => {
               <tbody>
                 {pagedSessions.length > 0 ? (
                   pagedSessions.map(session => {
-                    const label = sessionLabel(session)
+                    const label = session.name
                     const pl = sessionPL(session)
                     return (
                       <tr key={session._id}>
@@ -407,7 +376,7 @@ const History = () => {
                               maxLength={200}
                               aria-label={`Edit name for ${label}`}
                             />
-                          ) : session.type === 'Tournament' ? (
+                          ) : (
                             <button
                               type='button'
                               className='inline-edit-trigger'
@@ -416,8 +385,6 @@ const History = () => {
                               aria-label={`Edit name for ${label}`}>
                               {label}
                             </button>
-                          ) : (
-                            label
                           )}
                         </td>
                         <td data-label='Venue'>{session.venue}</td>

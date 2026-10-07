@@ -10,14 +10,6 @@ const sessionSchema = new mongoose.Schema(
     type: { type: String, enum: ['Cash', 'Tournament'], required: true },
     game: { type: String, enum: ['NL', 'PLO'], required: true },
     name: String,
-    // Cash game stakes (small blind / big blind)
-    sb: money,
-    bb: money,
-    hands: {
-      type: Number,
-      min: 0,
-      validate: { validator: v => v == null || Number.isInteger(v), message: 'Hands must be a whole number' },
-    },
     buyin: money,
     cashout: money,
     start: Date,

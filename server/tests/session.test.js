@@ -16,8 +16,7 @@ const cashSession = (overrides = {}) => ({
   venue: 'Online',
   type: 'Cash',
   game: 'NL',
-  sb: 0.05,
-  bb: 0.1,
+  name: 'NL10',
   buyin: 10,
   start: START,
   ...overrides,
@@ -72,10 +71,10 @@ describe('auth & listing', () => {
 })
 
 describe('POST /api/session', () => {
-  it('creates a cash session, derives the name and writes a Buy-in', async () => {
-    const res = await create(cashSession({ name: 'ignored', hands: 250 }))
+  it('creates a cash session, keeps the stake name and writes a Buy-in', async () => {
+    const res = await create(cashSession())
     expect(res.status).toBe(201)
-    expect(res.body).toMatchObject({ name: 'NL10', sb: 0.05, bb: 0.1, hands: 250, buyin: 10, cashout: 0 })
+    expect(res.body).toMatchObject({ name: 'NL10', buyin: 10, cashout: 0 })
     expect(res.body.user).toBe(me.user._id)
 
     const txns = await ledger(res.body._id)
@@ -116,29 +115,14 @@ describe('POST /api/session', () => {
     expect(res.body).toEqual({ message: 'End time must be after start time' })
   })
 
-  it('requires stakes for cash sessions', async () => {
-    const res = await create(cashSession({ sb: undefined, bb: undefined, name: 'Home game' }))
-    expect(res.status).toBe(422)
-    expect(res.body.message).toBe('Stakes are required for cash sessions')
-  })
-
-  it('parses stakes from the name when missing', async () => {
-    const res = await create(cashSession({ sb: undefined, bb: undefined, name: 'NL25' }))
-    expect(res.status).toBe(201)
-    expect(res.body).toMatchObject({ name: 'NL25', sb: 0.1, bb: 0.25 })
-  })
-
-  it('requires a tournament name and strips cash-only fields', async () => {
+  it('requires a tournament name', async () => {
     const missing = await create(tournament({ name: '' }))
     expect(missing.status).toBe(422)
     expect(missing.body.message).toBe('Tournament name is required')
 
-    const res = await create(tournament({ sb: 1, bb: 2, hands: 100 }))
+    const res = await create(tournament())
     expect(res.status).toBe(201)
     expect(res.body.name).toBe('Sunday MTT')
-    expect(res.body.sb).toBeUndefined()
-    expect(res.body.bb).toBeUndefined()
-    expect(res.body.hands).toBeUndefined()
   })
 
   it('rejects invalid enums and negative buy-ins with 422', async () => {
@@ -152,7 +136,7 @@ describe('PUT /api/session (partial update)', () => {
   let session
 
   beforeAll(async () => {
-    const res = await create(cashSession({ notes: 'table 4', hands: 100 }))
+    const res = await create(cashSession({ notes: 'table 4' }))
     session = res.body
   })
 
@@ -164,9 +148,6 @@ describe('PUT /api/session (partial update)', () => {
       type: 'Cash',
       game: 'NL',
       name: 'NL10',
-      sb: 0.05,
-      bb: 0.1,
-      hands: 100,
       buyin: 10,
       cashout: 30,
       notes: 'table 4',
@@ -202,10 +183,9 @@ describe('PUT /api/session (partial update)', () => {
   })
 
   it('clears optional fields with empty values', async () => {
-    const res = await edit({ id: session._id, end: '', hands: null })
+    const res = await edit({ id: session._id, end: '' })
     expect(res.status).toBe(200)
     expect(res.body.end).toBeUndefined()
-    expect(res.body.hands).toBeUndefined()
   })
 
   it('rejects end before start', async () => {
@@ -214,8 +194,8 @@ describe('PUT /api/session (partial update)', () => {
     expect(res.body.message).toBe('End time must be after start time')
   })
 
-  it('re-derives the name when stakes change', async () => {
-    const res = await edit({ id: session._id, sb: 0.1, bb: 0.25 })
+  it('renames the stake and updates the ledger note', async () => {
+    const res = await edit({ id: session._id, name: 'NL25' })
     expect(res.status).toBe(200)
     expect(res.body.name).toBe('NL25')
     const byType = await ledgerByType(session._id)
@@ -236,35 +216,10 @@ describe('PUT /api/session (partial update)', () => {
     expect((await edit({ id: new mongoose.Types.ObjectId().toString(), cashout: 1 })).status).toBe(404)
   })
 
-  it('parses stakes for a legacy cash session on update', async () => {
-    const legacy = await db()
-      .collection('sessions')
-      .insertOne({
-        user: oid(me.user._id),
-        venue: 'Online',
-        type: 'Cash',
-        game: 'NL',
-        name: 'NL25',
-        buyin: 25,
-        cashout: 0,
-        start: new Date(START),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-    const res = await edit({ id: legacy.insertedId.toString(), cashout: 40 })
-    expect(res.status).toBe(200)
-    expect(res.body).toMatchObject({ name: 'NL25', sb: 0.1, bb: 0.25, cashout: 40 })
-    const byType = await ledgerByType(legacy.insertedId.toString())
-    expect(byType['Buy-in'].amount).toBe(25)
-    expect(byType['Cash-out'].amount).toBe(40)
-  })
-
-  it('switching to a tournament requires a name and unsets stakes', async () => {
+  it('switching to a tournament keeps the given name', async () => {
     const res = await edit({ id: session._id, type: 'Tournament', name: 'Bounty Builder' })
     expect(res.status).toBe(200)
     expect(res.body.name).toBe('Bounty Builder')
-    expect(res.body.sb).toBeUndefined()
-    expect(res.body.bb).toBeUndefined()
   })
 })
 
@@ -280,14 +235,14 @@ describe('POST /api/session/import', () => {
         cashSession({ start: undefined }),
         tournament({ name: 'Imported MTT', buyin: '55', cashout: '' }),
         'not an object',
-        cashSession({ sb: undefined, bb: undefined, name: 'Mystery' }),
+        tournament({ name: '' }),
       ])
     expect(res.status).toBe(201)
     expect(res.body.imported).toBe(2)
     expect(res.body.skipped).toEqual([
       { row: 2, reason: 'Start time is required' },
       { row: 4, reason: 'Invalid row' },
-      { row: 5, reason: 'Stakes are required for cash sessions' },
+      { row: 5, reason: 'Tournament name is required' },
     ])
 
     expect(await db().collection('sessions').countDocuments({ _id: oid(clientId) })).toBe(0)

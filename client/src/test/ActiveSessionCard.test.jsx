@@ -9,8 +9,7 @@ const cashSession = {
   venue: 'Online',
   type: 'Cash',
   game: 'NL',
-  sb: 0.05,
-  bb: 0.1,
+  name: 'NL10',
   buyin: 10,
   cashout: 0,
   start: new Date().toISOString(),
@@ -46,14 +45,13 @@ describe('ActiveSessionCard', () => {
     expect(onUpdate).toHaveBeenCalledWith(cashSession, { cashout: 0 }, 'Cashout updated!')
   })
 
-  it('shows the stakes label and blinds', () => {
+  it('shows the stake as entered', () => {
     renderCard(cashSession)
     expect(screen.getByText('NL10')).toBeInTheDocument()
-    expect(screen.getByText(/\$0\.05\/\$0\.10/)).toBeInTheDocument()
   })
 
   it('starts a running tournament at zero', () => {
-    renderCard({ ...cashSession, type: 'Tournament', name: 'Turbo', sb: undefined, bb: undefined })
+    renderCard({ ...cashSession, type: 'Tournament', name: 'Turbo' })
     expect(screen.getByLabelText('Cash out amount')).toHaveValue(0)
   })
 })

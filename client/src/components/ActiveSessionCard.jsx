@@ -5,7 +5,6 @@ import { format } from 'date-fns'
 // Components
 import SessionTimer from './SessionTimer'
 // Utils
-import { formatBlinds, sessionLabel, sessionStakes } from '../utils/stakes'
 import { formatMoney, formatSigned, plColor } from '../utils/money'
 
 const roundCents = n => Math.round(n * 100) / 100
@@ -22,8 +21,7 @@ const ActiveSessionCard = ({ session, balance, onUpdate, onDuplicate, onDelete }
   const [rebuyOpen, setRebuyOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const stakes = sessionStakes(session)
-  const label = sessionLabel(session)
+  const label = session.name
   const cashout = parseFloat(cashoutInput) || 0
   const pnl = cashout - session.buyin
   // Balance already reflects the saved cash-out; project the unsaved difference
@@ -75,7 +73,6 @@ const ActiveSessionCard = ({ session, balance, onUpdate, onDuplicate, onDelete }
           <span className='active-session__name'>{label}</span>
           <span className='active-session__meta'>
             {session.venue} · {session.type} · {session.game}
-            {stakes && ` · ${formatBlinds(stakes.sb, stakes.bb)}`}
           </span>
         </div>
         <div className='active-session__manage'>

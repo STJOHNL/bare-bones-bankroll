@@ -1,13 +1,8 @@
-import { parseStakes, stakesLabel, defaultSmallBlind } from './stakes.js'
-
 export const SESSION_FIELDS = [
   'venue',
   'type',
   'game',
   'name',
-  'sb',
-  'bb',
-  'hands',
   'buyin',
   'cashout',
   'start',
@@ -20,7 +15,6 @@ export const SESSION_TYPES = ['Cash', 'Tournament']
 export const GAMES = ['NL', 'PLO']
 
 const MAX_MONEY = 10000000
-const MAX_BB = 100000
 const MAX_NAME = 200
 const MAX_NOTES = 5000
 
@@ -29,9 +23,6 @@ const LABELS = {
   type: 'Type',
   game: 'Game',
   name: 'Name',
-  sb: 'Small blind',
-  bb: 'Big blind',
-  hands: 'Hands',
   buyin: 'Buy-in',
   cashout: 'Cash-out',
   start: 'Start time',
@@ -104,7 +95,7 @@ const normalize = input => {
   if (!venue) fail('Venue is required')
   const type = toEnum('type', src.type, SESSION_TYPES)
   if (!type) fail('Type is required')
-  let game = toEnum('game', src.game, GAMES)
+  const game = toEnum('game', src.game, GAMES)
 
   const rawName = toText('name', src.name)
   let name = rawName === undefined ? undefined : rawName.trim()
@@ -126,48 +117,15 @@ const normalize = input => {
   const end = toDate('end', src.end)
   if (end && end < start) fail('End time must be after start time')
 
-  let sb = toNumber('sb', src.sb)
-  let bb = toNumber('bb', src.bb)
-  let hands = toNumber('hands', src.hands)
-
-  if (type === 'Cash') {
-    if (bb === undefined || !game) {
-      const parsed = parseStakes(rawName)
-      if (parsed) {
-        if (bb === undefined) {
-          bb = parsed.bb
-          if (sb === undefined) sb = parsed.sb
-        }
-        if (!game && parsed.game) game = parsed.game
-      }
-    }
-    if (bb !== undefined && sb === undefined && bb > 0) sb = defaultSmallBlind(bb)
-    if (bb === undefined || sb === undefined) fail('Stakes are required for cash sessions')
-    if (bb <= 0) fail('Big blind must be greater than 0')
-    if (sb <= 0) fail('Small blind must be greater than 0')
-    if (bb > MAX_BB) fail(`Big blind must be ${MAX_BB.toLocaleString('en-US')} or less`)
-    if (sb > bb) fail('Small blind cannot be larger than the big blind')
-    if (hands !== undefined && (!Number.isInteger(hands) || hands < 0)) {
-      fail('Hands must be a whole number of 0 or more')
-    }
-    if (!game) fail('Game is required')
-    name = stakesLabel(game, bb)
-  } else {
-    if (!game) fail('Game is required')
-    if (!name) fail('Tournament name is required')
-    sb = undefined
-    bb = undefined
-    hands = undefined
-  }
+  if (!game) fail('Game is required')
+  // Cash sessions keep the stake as free text (e.g. "NL20"); tournaments need a name
+  if (type === 'Tournament' && !name) fail('Tournament name is required')
 
   return {
     venue,
     type,
     game,
     name,
-    sb,
-    bb,
-    hands,
     buyin,
     cashout,
     start,

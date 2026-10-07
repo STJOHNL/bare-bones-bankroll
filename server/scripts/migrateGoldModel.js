@@ -3,9 +3,8 @@
  *
  *   (a) Transactions 'Deposit'    → 'Purchase'   (cost = amount)
  *   (b) Transactions 'Withdrawal' → 'Redemption' (status = 'Completed')
- *   (c) Cash sessions without stakes: parse sb/bb from the name and relabel (e.g. 'NL25')
- *   (d) Users: drop legacy resetToken and team fields
- *   (e) syncIndexes() on every model (after removing duplicate session ledger rows,
+ *   (c) Users: drop legacy resetToken and team fields
+ *   (d) syncIndexes() on every model (after removing duplicate session ledger rows,
  *       which would block the new unique { sessionId, type } index)
  *
  * DRY RUN by default — nothing is written. Pass --apply to write changes.
@@ -23,7 +22,6 @@ import Session from '../models/Session.js'
 import Transaction from '../models/Transaction.js'
 import Message from '../models/Message.js'
 import PlayerNote from '../models/PlayerNote.js'
-import { parseStakes, stakesLabel } from '../utils/stakes.js'
 
 dotenv.config({ path: process.env.BBB_ENV_PATH || './config/.env' })
 
@@ -59,47 +57,7 @@ const migrateWithdrawals = async db => {
   console.log(`(b) Withdrawal → Redemption: ${verb} ${count}`)
 }
 
-// (c) Cash sessions missing stakes
-const migrateCashStakes = async db => {
-  const sessions = await db
-    .collection('sessions')
-    .find({ type: 'Cash', $or: [{ bb: { $exists: false } }, { bb: null }] })
-    .project({ name: 1, game: 1 })
-    .toArray()
-
-  let parsedCount = 0
-  const unparsed = new Map()
-  const ops = []
-
-  for (const s of sessions) {
-    const parsed = parseStakes(s.name)
-    const game = s.game || parsed?.game
-    if (!parsed || !game) {
-      const key = s.name ?? '(no name)'
-      unparsed.set(key, (unparsed.get(key) || 0) + 1)
-      continue
-    }
-    parsedCount++
-    ops.push({
-      updateOne: {
-        filter: { _id: s._id },
-        update: { $set: { sb: parsed.sb, bb: parsed.bb, game, name: stakesLabel(game, parsed.bb) } },
-      },
-    })
-  }
-
-  if (APPLY && ops.length) await db.collection('sessions').bulkWrite(ops)
-
-  const unparsedTotal = sessions.length - parsedCount
-  console.log(`(c) Cash sessions missing stakes: ${sessions.length} found, ${verb} ${parsedCount}, ${unparsedTotal} could not be parsed`)
-  if (unparsed.size) {
-    console.table(
-      [...unparsed.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count }))
-    )
-  }
-}
-
-// (d) Legacy user fields
+// (c) Legacy user fields
 const migrateUsers = async db => {
   const users = db.collection('users')
   const resetCount = await users.countDocuments({ resetToken: { $exists: true } })
@@ -110,13 +68,13 @@ const migrateUsers = async db => {
       { $unset: { resetToken: '', team: '' } }
     )
   }
-  console.log(`(d) Users: unset resetToken ${verb} ${resetCount}, unset team ${verb} ${teamCount}`)
+  console.log(`(c) Users: unset resetToken ${verb} ${resetCount}, unset team ${verb} ${teamCount}`)
 
   const badRoles = await users.countDocuments({ role: { $exists: true, $nin: ROLES } })
   if (badRoles) console.log(`    Note: ${badRoles} user(s) have a role outside ${ROLES.join('/')} — fix by hand`)
 }
 
-// (e) Indexes
+// (d) Indexes
 const migrateIndexes = async db => {
   // The unique { sessionId, type } index cannot be built while duplicates exist.
   // Ledger rows are derived from their session, so keep the newest of each pair.
@@ -133,7 +91,7 @@ const migrateIndexes = async db => {
   if (APPLY && extraIds.length) {
     await db.collection('transactions').deleteMany({ _id: { $in: extraIds } })
   }
-  console.log(`(e) Duplicate session ledger rows: ${APPLY ? 'removed' : 'would remove'} ${extraIds.length}`)
+  console.log(`(d) Duplicate session ledger rows: ${APPLY ? 'removed' : 'would remove'} ${extraIds.length}`)
 
   for (const Model of [User, Session, Transaction, Message, PlayerNote]) {
     if (APPLY) {
@@ -150,7 +108,7 @@ const migrateIndexes = async db => {
 
 let exitCode = 0
 try {
-  // Indexes are managed explicitly in step (e)
+  // Indexes are managed explicitly in step (d)
   mongoose.set('autoIndex', false)
   mongoose.set('strictQuery', true)
   await mongoose.connect(MONGO_URL)
@@ -159,7 +117,6 @@ try {
   const db = mongoose.connection.db
   await migrateDeposits(db)
   await migrateWithdrawals(db)
-  await migrateCashStakes(db)
   await migrateUsers(db)
   await migrateIndexes(db)
 

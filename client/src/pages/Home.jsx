@@ -61,8 +61,8 @@ const Home = () => {
           <FaChartLine className="feature__icon" />
           <h3 className="feature__title">Performance Stats</h3>
           <p className="feature__desc">
-            View your P/L, hourly rate, and bb/100 by stakes, filtered by day, week, month, or all
-            time.
+            View your win rate, P/L, and average session results filtered by day, week, month, or
+            all time.
           </p>
         </div>
       </section>

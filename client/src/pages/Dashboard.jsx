@@ -16,7 +16,6 @@ import StatGrid from '../components/StatGrid'
 import ActiveSessionCard from '../components/ActiveSessionCard'
 // Utils
 import { DATE_FILTERS, cumulativeSeries, filterByPeriod, isCompleted, sessionPL, summarize } from '../utils/stats'
-import { sessionLabel } from '../utils/stakes'
 import { formatMoney, formatPL, plColor } from '../utils/money'
 import { rollDecision } from '../utils/rngGifs'
 
@@ -199,7 +198,7 @@ const Dashboard = () => {
           <tbody>
             {recentSessions.length > 0 ? (
               recentSessions.map(session => {
-                const label = sessionLabel(session)
+                const label = session.name
                 const pl = sessionPL(session)
                 return (
                   <tr key={session._id}>

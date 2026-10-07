@@ -81,4 +81,4 @@ export const downloadCsv = (filename, csv) => {
 }
 
 // Columns shared by session export and import so exported files re-import cleanly
-export const SESSION_CSV_COLUMNS = ['venue', 'type', 'game', 'name', 'sb', 'bb', 'hands', 'buyin', 'cashout', 'start', 'end', 'notes']
+export const SESSION_CSV_COLUMNS = ['venue', 'type', 'game', 'name', 'buyin', 'cashout', 'start', 'end', 'notes']

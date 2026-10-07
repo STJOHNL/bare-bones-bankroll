@@ -1,5 +1,4 @@
 import { format, startOfDay, startOfWeek, startOfMonth, startOfYear } from 'date-fns'
-import { sessionLabel, sessionStakes } from './stakes'
 
 export const DATE_FILTERS = [
   { label: 'Today', value: 'today' },
@@ -63,19 +62,6 @@ export const playedMinutes = sessions => {
   return total / 60000
 }
 
-// Big blinds won per 100 hands, across cash sessions that recorded hands
-export const bbPer100 = sessions => {
-  let bbWon = 0
-  let hands = 0
-  for (const s of sessions) {
-    const stakes = sessionStakes(s)
-    if (!stakes || !(s.hands > 0)) continue
-    bbWon += sessionPL(s) / stakes.bb
-    hands += s.hands
-  }
-  return hands > 0 ? { value: (bbWon / hands) * 100, hands } : null
-}
-
 export const summarize = sessions => {
   let totalPL = 0
   let wins = 0
@@ -94,7 +80,6 @@ export const summarize = sessions => {
     avgPerSession: count > 0 ? totalPL / count : 0,
     hours: minutes / 60,
     hourlyRate: minutes > 0 ? totalPL / (minutes / 60) : null,
-    bb100: bbPer100(sessions),
   }
 }
 
@@ -120,16 +105,6 @@ export const breakdownBy = (sessions, keyFn) => {
   }
   return [...groups.entries()].map(([label, rows]) => ({ label, ...summarize(rows) }))
 }
-
-// Cash results per stake level, smallest stakes first
-export const stakesBreakdown = sessions =>
-  breakdownBy(
-    sessions.filter(s => sessionStakes(s)),
-    s => sessionLabel(s)
-  ).sort((a, b) => {
-    const bbOf = label => parseFloat(label.replace(/^\D+/, '')) || 0
-    return bbOf(a.label) - bbOf(b.label) || a.label.localeCompare(b.label)
-  })
 
 export const streaks = sessions => {
   const sorted = [...sessions].sort(byStartAsc)

@@ -5,10 +5,9 @@ A poker bankroll tracker built with React, Node.js/Express, and MongoDB. Availab
 ## Features
 
 - Log poker sessions (Online/Live, Cash/Tournament, NL/PLO) with buy-in, cash-out, and notes
-- Cash sessions use structured stakes (small/big blind) with optional hands played for bb/100
 - Built for sweepstakes sites like Club WPT Gold: track purchases (dollars paid vs chips received), redemptions (pending/completed/cancelled), and promos
 - Session buy-ins and cash-outs are recorded in the ledger automatically by the server
-- Bankroll statistics, reports by stakes, and session history with CSV export/import
+- Bankroll statistics, reports, and session history with CSV export/import
 - JWT-based authentication with password reset via email
 - Admin dashboard for support ticket management
 - Native Windows desktop app with auto-updates
@@ -115,7 +114,7 @@ bare-bones-bankroll/
 │       ├── components/  # Reusable UI components
 │       ├── context/     # UserContext, BankrollContext
 │       ├── hooks/       # Custom hooks
-│       └── utils/       # Bankroll, stats, stakes, CSV and date helpers
+│       └── utils/       # Bankroll, stats, CSV and date helpers
 ├── server/              # Express backend
 │   ├── models/          # Mongoose schemas (User, Session, Transaction, Message)
 │   ├── controllers/     # Route handlers
@@ -160,15 +159,13 @@ Updates are delivered via **GitHub Releases** using `electron-updater`. The flow
 
 ## Data Migration (v1.12)
 
-Version 1.12 renames Deposit/Withdrawal to Purchase/Redemption, adds structured stakes to cash sessions, and adds indexes. Older data still displays correctly, but run the migration once against your database:
+Version 1.12 renames Deposit/Withdrawal to Purchase/Redemption and adds indexes. Older data still displays correctly, but run the migration once against your database:
 
 ```bash
 cd server
 npm run migrate:gold            # dry run — shows what would change
 npm run migrate:gold -- --apply # writes the changes
 ```
-
-The dry run lists any cash-session names it could not turn into stakes; fix those by editing the session.
 
 ## API Routes
 

@@ -6,12 +6,8 @@ import { useSession } from '../../hooks/useSession'
 // Context
 import { useBankrollContext } from '../../context/BankrollContext'
 // Utils
-import { STAKE_PRESETS, formatBlinds, sessionStakes, stakesLabel } from '../../utils/stakes'
 import { formatDuration, toDateTimeLocal } from '../../utils/dates'
 import { formatSigned } from '../../utils/money'
-
-const presetKey = ({ sb, bb }) => `${sb}/${bb}`
-const CUSTOM = 'custom'
 
 const SessionForm = ({ onSubmitCallback, parentData, prefillData, buttonText }) => {
   const { createSession, updateSession } = useSession()
@@ -21,32 +17,18 @@ const SessionForm = ({ onSubmitCallback, parentData, prefillData, buttonText }) 
 
   // Setup fields: prefer parentData (edit), then prefillData (duplicate), then empty
   const initSource = parentData || prefillData || {}
-  const initStakes = sessionStakes(initSource)
-  const initPreset = initStakes
-    ? STAKE_PRESETS.find(p => p.sb === initStakes.sb && p.bb === initStakes.bb)
-    : STAKE_PRESETS[2]
 
   // Form data
   const [venue, setVenue] = useState(initSource.venue || 'Online')
   const [type, setType] = useState(initSource.type || 'Cash')
   const [game, setGame] = useState(initSource.game || 'NL')
-  const [name, setName] = useState(initSource.type === 'Tournament' ? initSource.name || '' : '')
-  const [stakesChoice, setStakesChoice] = useState(initPreset ? presetKey(initPreset) : CUSTOM)
-  const [sb, setSb] = useState(initStakes ? String(initStakes.sb) : '')
-  const [bb, setBb] = useState(initStakes ? String(initStakes.bb) : '')
+  const [name, setName] = useState(initSource.name || '')
   const [buyin, setBuyin] = useState(initSource.buyin ?? '')
   // Result fields: only carry over when editing (parentData), not when duplicating
-  const [hands, setHands] = useState(parentData?.hands ?? '')
   const [cashout, setCashout] = useState(parentData?.cashout ?? '')
   const [start, setStart] = useState(toDateTimeLocal(parentData?.start || new Date()))
   const [end, setEnd] = useState(parentData?.end ? toDateTimeLocal(parentData.end) : '')
   const [notes, setNotes] = useState(initSource.notes || '')
-
-  // Resolved blinds from the preset or the custom inputs
-  const selectedStakes =
-    stakesChoice === CUSTOM
-      ? { sb: parseFloat(sb), bb: parseFloat(bb) }
-      : STAKE_PRESETS.find(p => presetKey(p) === stakesChoice)
 
   // Derived: live P&L
   const pnl = (parseFloat(cashout) || 0) - (parseFloat(buyin) || 0)
@@ -56,13 +38,7 @@ const SessionForm = ({ onSubmitCallback, parentData, prefillData, buttonText }) 
   const duration = start && end ? formatDuration(new Date(end) - new Date(start)) : ''
 
   const validate = () => {
-    if (type === 'Cash') {
-      const { sb: s, bb: b } = selectedStakes || {}
-      if (!(s > 0) || !(b > 0)) return 'Enter the small and big blind'
-      if (s > b) return 'Small blind cannot be larger than the big blind'
-    } else if (!name.trim()) {
-      return 'Enter the tournament name'
-    }
+    if (!name.trim()) return type === 'Cash' ? 'Enter the stake' : 'Enter the tournament name'
     if (end && new Date(end) <= new Date(start)) return 'End time must be after the start time'
     return null
   }
@@ -75,14 +51,11 @@ const SessionForm = ({ onSubmitCallback, parentData, prefillData, buttonText }) 
       return
     }
 
-    const isCash = type === 'Cash'
     const formData = {
       venue,
       type,
       game,
-      ...(isCash
-        ? { sb: selectedStakes.sb, bb: selectedStakes.bb, hands: hands === '' ? null : parseInt(hands, 10) }
-        : { name: name.trim() }),
+      name: name.trim(),
       buyin: parseFloat(buyin) || 0,
       cashout: parseFloat(cashout) || 0,
       start: new Date(start).toISOString(),
@@ -110,12 +83,10 @@ const SessionForm = ({ onSubmitCallback, parentData, prefillData, buttonText }) 
     }
   }
 
-  const heading = type === 'Cash' && selectedStakes?.bb > 0 ? stakesLabel(game, selectedStakes.bb) : type
-
   return (
     <form onSubmit={handleSubmit}>
       <h2>
-        {venue} {heading} Session
+        {venue} {type} Session
       </h2>
 
       {/* Game Details Section */}
@@ -149,69 +120,25 @@ const SessionForm = ({ onSubmitCallback, parentData, prefillData, buttonText }) 
           <div>
             <label htmlFor='game'>Game</label>
             <select name='game' id='game' value={game} onChange={e => setGame(e.target.value)} required>
-              <option value='NL'>NL Hold&apos;em</option>
+              <option value='NL'>NL</option>
               <option value='PLO'>PLO</option>
             </select>
           </div>
         </div>
 
-        {type === 'Cash' ? (
-          <>
-            <label htmlFor='stakes'>Stakes</label>
-            <select id='stakes' value={stakesChoice} onChange={e => setStakesChoice(e.target.value)} required>
-              {STAKE_PRESETS.map(p => (
-                <option key={presetKey(p)} value={presetKey(p)}>
-                  {formatBlinds(p.sb, p.bb)} ({stakesLabel(game, p.bb)})
-                </option>
-              ))}
-              <option value={CUSTOM}>Custom…</option>
-            </select>
-            {stakesChoice === CUSTOM && (
-              <div className='form-row'>
-                <div>
-                  <label htmlFor='sb'>Small blind ($)</label>
-                  <input
-                    type='number'
-                    id='sb'
-                    value={sb}
-                    onChange={e => setSb(e.target.value)}
-                    placeholder='0.05'
-                    step='0.01'
-                    min='0.01'
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor='bb'>Big blind ($)</label>
-                  <input
-                    type='number'
-                    id='bb'
-                    value={bb}
-                    onChange={e => setBb(e.target.value)}
-                    placeholder='0.10'
-                    step='0.01'
-                    min='0.01'
-                    required
-                  />
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <label htmlFor='name'>Tournament Name</label>
-            <input
-              type='text'
-              name='name'
-              id='name'
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder='e.g. Sunday Major, $5 Turbo'
-              maxLength={200}
-              required
-            />
-          </>
-        )}
+        <div>
+          <label htmlFor='name'>{type === 'Cash' ? 'Stake' : 'Tournament Name'}</label>
+          <input
+            type='text'
+            name='name'
+            id='name'
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder={type === 'Cash' ? 'e.g. NL20, NL50, NL100, NL200' : 'e.g. Sunday Million, WSOP Event #5, Home Game'}
+            maxLength={200}
+            required
+          />
+        </div>
       </div>
 
       {/* Financial Section */}
@@ -247,20 +174,6 @@ const SessionForm = ({ onSubmitCallback, parentData, prefillData, buttonText }) 
           </div>
         </div>
         {showPnl && <p className={`form-pnl ${pnl >= 0 ? 'amount--pos' : 'amount--neg'}`}>{formatSigned(pnl)}</p>}
-        {type === 'Cash' && (
-          <>
-            <label htmlFor='hands'>Hands played (optional)</label>
-            <input
-              type='number'
-              id='hands'
-              value={hands}
-              onChange={e => setHands(e.target.value)}
-              placeholder='Enables bb/100 in Reports'
-              step='1'
-              min='0'
-            />
-          </>
-        )}
       </div>
 
       {/* Time Section */}
