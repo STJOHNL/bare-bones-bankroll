@@ -6,7 +6,8 @@ export default {
   // @access PRIVATE
   getPlayerNotes: async (req, res, next) => {
     try {
-      const notes = await PlayerNote.find({ user: req.user._id }).sort({ updatedAt: -1 })
+      // Pinned players first, then most recently updated
+      const notes = await PlayerNote.find({ user: req.user._id }).sort({ pinned: -1, updatedAt: -1 })
       res.status(200).json(notes)
     } catch (error) {
       next(error)
@@ -18,22 +19,25 @@ export default {
   // @access PRIVATE
   createPlayerNote: async (req, res, next) => {
     try {
-      const { name, notes } = req.body
-      const note = await PlayerNote.create({ user: req.user._id, name, notes: notes ?? '' })
+      const { name, notes, category, pinned } = req.body
+      const note = await PlayerNote.create({ user: req.user._id, name, notes: notes ?? '', category, pinned })
       res.status(201).json(note)
     } catch (error) {
       next(error)
     }
   },
 
-  // @desc  Update a player note
+  // @desc  Update a player note (partial — only the fields sent are changed)
   // @route PUT /api/player-notes/:id
   // @access PRIVATE
   updatePlayerNote: async (req, res, next) => {
     try {
-      const { name, notes } = req.body
-      const update = { name }
+      const { name, notes, category, pinned } = req.body
+      const update = {}
+      if (name !== undefined) update.name = name
       if (notes !== undefined) update.notes = notes ?? ''
+      if (category !== undefined) update.category = category
+      if (pinned !== undefined) update.pinned = pinned
 
       // Ownership is part of the filter so users can only touch their own notes
       const updated = await PlayerNote.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, update, {

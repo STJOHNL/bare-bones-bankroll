@@ -2,6 +2,7 @@ import { body } from 'express-validator'
 import { ROLES } from '../models/User.js'
 import { MESSAGE_CATEGORIES, MESSAGE_STATUSES } from '../models/Message.js'
 import { MANUAL_TYPES, SESSION_TYPES, REDEMPTION_STATUSES } from '../models/Transaction.js'
+import { PLAYER_CATEGORIES } from '../models/PlayerNote.js'
 
 const MAX_MONEY = 10000000
 
@@ -202,14 +203,16 @@ export const transactionEditValidator = [
 /**
  * Player note validators
  */
-export const playerNoteValidator = [
+const playerNoteName = () =>
   body('name')
     .isString()
     .withMessage('Name is required')
     .bail()
     .trim()
     .isLength({ min: 1, max: 100 })
-    .withMessage('Name must be between 1 and 100 characters'),
+    .withMessage('Name must be between 1 and 100 characters')
+
+const playerNoteFields = () => [
   body('notes')
     .optional({ values: 'null' })
     .isString()
@@ -217,4 +220,14 @@ export const playerNoteValidator = [
     .bail()
     .isLength({ max: 5000 })
     .withMessage('Notes must be 5000 characters or fewer'),
+  body('category')
+    .optional()
+    .isIn(PLAYER_CATEGORIES)
+    .withMessage(`Category must be one of: ${PLAYER_CATEGORIES.join(', ')}`),
+  body('pinned').optional().isBoolean({ strict: true }).withMessage('Pinned must be true or false'),
 ]
+
+export const playerNoteValidator = [playerNoteName(), ...playerNoteFields()]
+
+// Updates are partial (e.g. just { pinned: true }), so the name is optional
+export const playerNoteEditValidator = [playerNoteName().optional(), ...playerNoteFields()]

@@ -24,7 +24,7 @@ module.exports = {
     'react-refresh/only-export-components': [
       'warn',
       // Context modules export their provider plus its hook
-      { allowConstantExport: true, allowExportNames: ['useUserContext', 'useBankrollContext', 'useThemeContext'] },
+      { allowConstantExport: true, allowExportNames: ['useUserContext', 'useBankrollContext', 'useThemeContext', 'usePlayerNotesContext'] },
     ],
     // Warn on leftover console.log calls — use src/utils/logger.js instead
     'no-console': 'warn',
