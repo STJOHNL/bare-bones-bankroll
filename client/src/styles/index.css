@@ -1333,6 +1333,48 @@ h1.heading-xl {
 /* Reports                                       */
 /* ============================================= */
 
+.hand-log {
+  margin-top: 1.5rem;
+}
+
+.hand-log__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hand-log__header h2 {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.hand-log__total {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hand-log form {
+  margin-top: 1.25rem;
+}
+
+.hand-log__entries {
+  margin-top: 1.5rem;
+}
+
+.hand-presets {
+  margin-top: 0.85rem;
+}
+
+.hand-range-summary {
+  margin-top: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
 .reports-breakdowns {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));

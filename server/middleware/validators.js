@@ -231,3 +231,31 @@ export const playerNoteValidator = [playerNoteName(), ...playerNoteFields()]
 
 // Updates are partial (e.g. just { pinned: true }), so the name is optional
 export const playerNoteEditValidator = [playerNoteName().optional(), ...playerNoteFields()]
+
+/**
+ * Hand log validators
+ */
+export const MAX_HANDS_PER_ENTRY = 10000000
+
+export const handLogValidator = [
+  body('hands')
+    .isInt({ min: 1, max: MAX_HANDS_PER_ENTRY })
+    .withMessage(`Hands must be a whole number between 1 and ${MAX_HANDS_PER_ENTRY.toLocaleString('en-US')}`)
+    .bail()
+    .toInt(),
+  body('date')
+    .optional({ values: 'falsy' })
+    .isString()
+    .withMessage('Date must be a valid ISO 8601 date')
+    .bail()
+    .isISO8601()
+    .withMessage('Date must be a valid ISO 8601 date'),
+  body('note')
+    .optional({ values: 'null' })
+    .isString()
+    .withMessage('Note must be text')
+    .bail()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Note must be 200 characters or fewer'),
+]

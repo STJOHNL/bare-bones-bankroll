@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
 import { useSession } from '../hooks/useSession'
+import { useHandLog } from '../hooks/useHandLog'
+import HandLog from '../components/HandLog'
 import Loader from '../components/Loader'
 import PageTitle from '../components/PageTitle'
 import PLChart from '../components/PLChart'
@@ -16,6 +18,18 @@ import {
   topSessions as computeTopSessions,
 } from '../utils/stats'
 import { formatMoney, formatPL, plColor } from '../utils/money'
+import { filterByHandRange, formatHands, per100, resolveHandRange, totalHands } from '../utils/hands'
+
+// "Last N hands" shortcuts; null means every hand logged
+const HAND_PRESETS = [
+  { label: 'All Hands', count: null },
+  { label: 'Last 10k', count: 10000 },
+  { label: 'Last 50k', count: 50000 },
+  { label: 'Last 100k', count: 100000 },
+]
+
+// '' → undefined so an empty input leaves that end of the range open
+const parseHandInput = value => (value === '' ? undefined : Math.max(0, Math.floor(Number(value)) || 0))
 
 const SessionsTable = ({ rows }) => (
   <div className='table-responsive'>
@@ -48,18 +62,53 @@ const SessionsTable = ({ rows }) => (
 
 const Reports = () => {
   const { getSessions } = useSession()
+  const { getHandLogs } = useHandLog()
   const [isLoading, setIsLoading] = useState(true)
   const [sessions, setSessions] = useState([])
+  const [handLogs, setHandLogs] = useState([])
   const [nameFilter, setNameFilter] = useState('')
+  const [handFrom, setHandFrom] = useState('')
+  const [handTo, setHandTo] = useState('')
 
   useEffect(() => {
-    const fetchSessions = async () => {
+    const fetchData = async () => {
       setIsLoading(true)
-      setSessions((await getSessions()) || [])
+      const [sessionData, logData] = await Promise.all([getSessions(), getHandLogs()])
+      setSessions(sessionData || [])
+      setHandLogs(logData || [])
       setIsLoading(false)
     }
-    fetchSessions()
-  }, [getSessions])
+    fetchData()
+  }, [getSessions, getHandLogs])
+
+  const lifetimeHands = useMemo(() => totalHands(handLogs), [handLogs])
+  const isHandFilterActive = handFrom !== '' || handTo !== ''
+  // Hands aren't tracked per stake, so per-hand stats only apply across all sessions
+  const showHandStats = !nameFilter.trim()
+
+  // The requested hand range widened to logged checkpoints, or null when empty
+  const handRange = useMemo(
+    () => (isHandFilterActive ? resolveHandRange(handLogs, parseHandInput(handFrom), parseHandInput(handTo)) : null),
+    [isHandFilterActive, handLogs, handFrom, handTo]
+  )
+  // Hand counts are only known at log entries, so the range used can be wider than asked
+  const isRangeWidened =
+    !!handRange &&
+    (handRange.from !== Math.min(parseHandInput(handFrom) ?? 0, lifetimeHands) ||
+      handRange.to !== Math.min(parseHandInput(handTo) ?? lifetimeHands, lifetimeHands))
+
+  const applyHandPreset = count => {
+    setHandFrom(count === null ? '0' : String(Math.max(0, lifetimeHands - count)))
+    setHandTo('')
+  }
+  const isPresetActive = count =>
+    handTo === '' && handFrom === (count === null ? '0' : String(Math.max(0, lifetimeHands - count)))
+
+  const clearFilters = () => {
+    setNameFilter('')
+    setHandFrom('')
+    setHandTo('')
+  }
 
   const allCompleted = useMemo(() => sessions.filter(isCompleted), [sessions])
 
@@ -71,11 +120,14 @@ const Reports = () => {
 
   const completed = useMemo(() => {
     const q = nameFilter.trim().toLowerCase()
-    if (!q) return allCompleted
-    return allCompleted.filter(s => s.name?.toLowerCase().includes(q))
-  }, [allCompleted, nameFilter])
+    let rows = q ? allCompleted.filter(s => s.name?.toLowerCase().includes(q)) : allCompleted
+    if (isHandFilterActive) rows = handRange ? filterByHandRange(rows, handRange) : []
+    return rows
+  }, [allCompleted, nameFilter, isHandFilterActive, handRange])
 
   const summary = useMemo(() => summarize(completed), [completed])
+  const rangeHands = handRange ? handRange.to - handRange.from : 0
+  const plPer100 = handRange ? per100(summary.totalPL, rangeHands) : null
   const plChartData = useMemo(() => cumulativeSeries(completed), [completed])
   const breakdown = useMemo(
     () => ({
@@ -94,6 +146,8 @@ const Reports = () => {
   return (
     <>
       <PageTitle title='Reports' />
+
+      <HandLog logs={handLogs} setLogs={setHandLogs} />
 
       {allCompleted.length === 0 ? (
         <div className='empty-state'>
@@ -120,18 +174,73 @@ const Reports = () => {
                 ))}
               </datalist>
             </div>
-            {nameFilter && (
-              <button type='button' className='btn btn--subtle' onClick={() => setNameFilter('')}>
+            <div>
+              <label htmlFor='handFrom'>From hand</label>
+              <input
+                type='number'
+                id='handFrom'
+                value={handFrom}
+                onChange={e => setHandFrom(e.target.value)}
+                placeholder='0'
+                min='0'
+                step='1'
+                inputMode='numeric'
+              />
+            </div>
+            <div>
+              <label htmlFor='handTo'>To hand</label>
+              <input
+                type='number'
+                id='handTo'
+                value={handTo}
+                onChange={e => setHandTo(e.target.value)}
+                placeholder={lifetimeHands > 0 ? formatHands(lifetimeHands) : 'Latest'}
+                min='0'
+                step='1'
+                inputMode='numeric'
+              />
+            </div>
+            {(nameFilter || isHandFilterActive) && (
+              <button type='button' className='btn btn--subtle' onClick={clearFilters}>
                 Clear
               </button>
             )}
           </div>
 
+          {lifetimeHands > 0 && (
+            <div className='date-filter hand-presets' role='group' aria-label='Hand range shortcuts'>
+              {HAND_PRESETS.map(p => (
+                <button
+                  key={p.label}
+                  type='button'
+                  onClick={() => applyHandPreset(p.count)}
+                  aria-pressed={isPresetActive(p.count)}
+                  className={`date-filter__btn${isPresetActive(p.count) ? ' date-filter__btn--active' : ''}`}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {isHandFilterActive && (
+            <p className='form-hint hand-range-summary' aria-live='polite'>
+              {lifetimeHands === 0
+                ? 'Log your hands played above to report by hand range.'
+                : !handRange
+                  ? `No hands logged in that range. You've logged ${formatHands(lifetimeHands)} hands.`
+                  : `Hands ${formatHands(handRange.from)} – ${formatHands(handRange.to)}: sessions from ${
+                      handRange.after ? format(handRange.after, 'MM/dd/yy h:mm a') : 'your first session'
+                    } to ${format(handRange.until, 'MM/dd/yy h:mm a')}.${
+                      isRangeWidened ? ' Widened to the nearest logged checkpoints.' : ''
+                    }`}
+            </p>
+          )}
+
           {completed.length === 0 ? (
             <div className='empty-state'>
               <span className='empty-state__title'>No matching sessions</span>
               <span className='empty-state__desc'>
-                No sessions found for &quot;{nameFilter}&quot;. Try a different stake or tournament name.
+                No completed sessions match these filters. Try a different stake, tournament name or hand range.
               </span>
             </div>
           ) : (
@@ -153,6 +262,21 @@ const Reports = () => {
                     color: summary.hourlyRate !== null ? plColor(summary.hourlyRate) : undefined,
                   },
                   { label: 'Hours Played', value: `${summary.hours.toFixed(1)}h`, hint: 'overlapping tables count once' },
+                  ...(showHandStats && lifetimeHands > 0
+                    ? [
+                        {
+                          label: 'Hands',
+                          value: formatHands(handRange ? rangeHands : lifetimeHands),
+                          hint: handRange ? undefined : 'lifetime',
+                        },
+                        {
+                          label: 'Per 100 Hands',
+                          value: plPer100 !== null ? formatPL(plPer100) : '—',
+                          color: plPer100 !== null ? plColor(plPer100) : undefined,
+                          hint: plPer100 === null ? 'pick a hand range' : undefined,
+                        },
+                      ]
+                    : []),
                 ]}
               />
 

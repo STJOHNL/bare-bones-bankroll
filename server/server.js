@@ -26,6 +26,7 @@ import supportRoutes from './routes/support.js'
 import sessionRoutes from './routes/session.js'
 import transactionRoutes from './routes/transaction.js'
 import playerNoteRoutes from './routes/playerNote.js'
+import handLogRoutes from './routes/handLog.js'
 
 // Connect to MongoDB
 mongoose.set('strictQuery', true)
@@ -81,6 +82,7 @@ app.use('/api/support', supportRoutes)
 app.use('/api/session', sessionRoutes)
 app.use('/api/transaction', transactionRoutes)
 app.use('/api/player-notes', playerNoteRoutes)
+app.use('/api/hands', handLogRoutes)
 
 // Unknown API routes get a JSON 404 (the SPA handles its own 404s)
 app.use('/api', error.notFound)

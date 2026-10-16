@@ -8,6 +8,7 @@ A poker bankroll tracker built with React, Node.js/Express, and MongoDB. Availab
 - Built for sweepstakes sites like Club WPT Gold: track purchases (dollars paid vs chips received), redemptions (pending/completed/cancelled), and promos
 - Session buy-ins and cash-outs are recorded in the ledger automatically by the server
 - Bankroll statistics, reports, and session history with CSV export/import
+- Lifetime hands played log, with reports by hand range (e.g. hands 100k–200k) and P/L per 100 hands
 - JWT-based authentication with password reset via email
 - Admin dashboard for support ticket management
 - Native Windows desktop app with auto-updates
